@@ -242,6 +242,13 @@ program driver
   end if
 
   ! ***** Print Table ************************************************************************
+  ! Here we print the input table used in a SpEC Hydro evolution.
+  !   To be read in using the EquationOfState::Tabulated class.
+  !   For the standard tables -- FULL (3D), BETA (2D), COLD(1D) -- as of 3.5.12,
+  !   the output colums are:
+  ! [1] epsilon, specific internal energy
+  ! [2] gamma,   so that P=kappa*rho^gamma, where kappa is the constant defined above
+  ! [3] cs,      relativistic adiabatic sound speed
   hmin = 1.d0
   do i=0, nt-1
     if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then

@@ -37,5 +37,5 @@ Icon?
 *.h5
 
 # Untracked Projects
-# Don't use .gitignore to keep a dir from local dir from being tracked. Put it into
+# Don't use .gitignore to keep a local dir from being tracked. Put it into
 #   .git/info/exclude
