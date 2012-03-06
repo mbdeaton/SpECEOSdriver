@@ -1,0 +1,59 @@
+Instructions for compiling and using SpECEOSdriver
+Brett Deaton - 3.5.12
+brett.deaton@gmail.com
+
+This EOSdriver is an edited version of Evan O'Connor and Christian
+     Ott's EOSdriver from stellarcollapse.org. Changes have been
+     made to construct tables for SpEC Hydro evolutions. Instructions
+     below for compiling and using the driver, and for git version
+     control.
+
+***** Compiling *****
+Make symbolic links to the appropriate Makefile and make.inc in
+     MakefileRules/. e.g.:
+$ cd SpECEOSdriver
+$ ln -s MakefileRules/Makefile-Ubuntu-10_04-gfortran Makefile
+$ ln -s MakefileRules/make.inc-Ubuntu-10_04-gfortran make.inc
+
+Download the appropriate h5 table from stellarcollapse.org.
+
+Edit driver.F90 in the "User-Chosen Parameters" section. At a
+     minimum choose an eostype, eos, and output resolution.
+
+Compile the driver:
+$ make -s driver
+
+***** Running *****
+Make the table:
+$ driver > mytable.dat
+
+Scan the table for nans, and perform other sanity checks (e.g.
+     plot the various columns).
+
+***** gitspeak *****
+If you have write access to the SpECEOSdriver git repo, then you can
+     edit the source code. Please use the following workflow:
+
+1) Make & test changes to the code.
+
+2) 'git add' and 'git commit' all you want during coding; it only
+     changes your local working copy. Once your edits have reached
+     a final state, make a final commit:
+$ git add <files that have changed>
+$ git commit -m 'my commit message'
+
+3) Pull and merge any changes from the remote repo:
+$ git pull
+
+4) Push your changes to the remote repo:
+$ git push
+
+Other high level git commands I use frequently:
+$ git status # examine what's ready to get checked in or pushed or whatever
+$ git diff          # diff working directory with the index
+$ git diff --cached # diff index with last commit
+$ git diff HEAD     # diff working directory with last commit
+$ git rm                           # rm a file from working dir and index
+$ git rm $(git ls-files --deleted) # rm all files from index that have already
+                                   #   been deleted from working directory
+$ git rm --cached                  # rm a file only from index

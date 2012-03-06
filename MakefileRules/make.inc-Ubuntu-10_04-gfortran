@@ -1,0 +1,14 @@
+# some definitions controlling compilation
+export HAVE_HDF5=1
+export F90=gfortran
+export F90FLAGS=-g -O3
+export LDFLAGS=$(F90FLAGS) 
+export HDF5DIR=/usr
+export HDF5LIBS=-L$(HDF5DIR)/lib -lhdf5_fortran -lhdf5 #-lz
+export HDF5INCS=-I$(HDF5DIR)/include
+export LAPACKLIBS=-llapack  #-lg2c
+export LIBS+=$(LAPACKLIBS)
+
+#don't use lapack for the moment
+#export LAPACKLIBS=-llapack  -lg2c
+#export LIBS+=$(LAPACKLIBS)
