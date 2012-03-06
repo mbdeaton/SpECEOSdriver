@@ -1,3 +1,7 @@
+# make links
+Makefile
+make.inc
+
 # Build products
 *.o
 *.a
