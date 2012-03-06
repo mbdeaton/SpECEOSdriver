@@ -1,6 +1,7 @@
 # Build products
 *.o
 *.a
+*.mod
 
 # Executables
 driver
