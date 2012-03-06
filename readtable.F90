@@ -8,8 +8,11 @@ subroutine readtable(eos_filename)
   implicit none
 
   character(*) eos_filename
-
   character(len=100) message
+  character*8 date
+  character*10 time
+  character*5 zone
+  integer outputvalues(8)
 
 ! HDF5 vars
   integer(HID_T) file_id,dset_id,dspace_id
@@ -21,13 +24,16 @@ subroutine readtable(eos_filename)
   real*8 buffer1,buffer2,buffer3,buffer4
   accerr=0
 
-  write(*,*) "Reading Ott EOS Table"
+  zone = "-0800" ! Pacific Standard Time UTC-8
+  call DATE_AND_TIME(date,time,zone,outputvalues)
 
+  write(*,"(A,A,A)") "# EOS Table generated on ", date, " from"
+  
   call h5open_f(error)
 
   call h5fopen_f (trim(adjustl(eos_filename)), H5F_ACC_RDONLY_F, file_id, error)
 
-  write(6,*) trim(adjustl(eos_filename))
+  write(*,"(A,A)") "# ", trim(adjustl(eos_filename))
 
 ! read scalars
   dims1(1)=1
@@ -57,8 +63,7 @@ subroutine readtable(eos_filename)
      stop "Could not read EOS table file"
   endif
 
-  write(message,"(a25,1P3i5)") "We have nrho ntemp nye: ", nrho,ntemp,nye
-  write(*,*) message
+  write(*,"(A,I6,I6,I6)") "# Original table has nrho ntemp nye: ", nrho,ntemp,nye
 
   allocate(alltables(nrho,ntemp,nye,nvars))
 
@@ -226,7 +231,7 @@ subroutine readtable(eos_filename)
   eos_tempmin = 10.0d0**logtemp(1)
   eos_tempmax = 10.0d0**logtemp(ntemp)
 
-  write(6,*) "Done reading eos tables"
+  !write(*,"(A)") "# Done reading eos tables"
 
 
 end subroutine readtable

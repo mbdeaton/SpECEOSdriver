@@ -9,8 +9,9 @@ This EOSdriver is an edited version of Evan O'Connor and Christian
      control.
 
 ***** Compiling *****
-Make symbolic links to the appropriate Makefile and make.inc in
-     MakefileRules/. e.g.:
+System requirements are a Fortran90 compiler and the HDF5 libraries
+with Fortran90 module files and bindings. Make symbolic links to the
+     appropriate Makefile and make.inc in MakefileRules/. e.g.:
 $ cd SpECEOSdriver
 $ ln -s MakefileRules/Makefile-Ubuntu-10_04-gfortran Makefile
 $ ln -s MakefileRules/make.inc-Ubuntu-10_04-gfortran make.inc
@@ -57,3 +58,7 @@ $ git rm                           # rm a file from working dir and index
 $ git rm $(git ls-files --deleted) # rm all files from index that have already
                                    #   been deleted from working directory
 $ git rm --cached                  # rm a file only from index
+
+If you have local files that you don't want git to watch, put them by
+     name into .git/info/exclude, not the global .gitignore.
+

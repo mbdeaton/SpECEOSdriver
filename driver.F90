@@ -113,17 +113,17 @@ program driver
   ! ***** User-Chosen Parameters ************************************************************
   eostype = COLD
   eos = HSHEN2_2
-  USER_CHOOSES_BOUNDS = .false.
+  USER_CHOOSES_BOUNDS = .true.
 
   ! Choose bounds different than table's intrinsic bounds in r,t,y
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
-  lrmin = 8d0
-  lrmax = 15.0d0
-  ltmin = -1.0d0
-  ltmax = 2.4d0
-  ymin = 0.035d0
-  ymax = 0.53d0
+  lrmin = 3d0
+  lrmax = 14.79d0
+  ltmin = -2.0d0
+  ltmax = 2.5d0
+  ymin = 0.01d0
+  ymax = 0.64d0
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
   nr = 2000
@@ -162,7 +162,7 @@ program driver
       ymax = 0.53d0
     end if
   else
-    print *, 'Error, EOS ', eos, ' is not recognized.'
+    write(*,"(A,I1,A)") 'Error, eos ', eos, ' is not recognized.'    
   end if
 
   rmin = 10**lrmin
@@ -183,62 +183,64 @@ program driver
 
   ! ***** Print Header ************************************************************************
   if(eostype.eq.MICRO) then
-    write(*,*) "EoSType = Microphysics"
+    write(*,"(A)") "EoSType = Microphysics"
   else if(eostype.eq.MUX) then
-    write(*,*) "EosType = ChemicalPotentials"
+    write(*,"(A)") "EosType = ChemicalPotentials"
   else if(eostype.eq.DERIVS) then
-    write(*,*) "EoSType = Derivs"
+    write(*,"(A)") "EoSType = Derivs"
   else if(eostype.eq.BETA) then
-    write(*,*) "EoSType = BetaEq"
+    write(*,"(A)") "EoSType = BetaEq"
   else if(eostype.eq.FULL) then
-    write(*,*) "EoSType = Tabulated"
+    write(*,"(A)") "EoSType = Tabulated"
   else if(eostype.eq.COLD) then
-    write(*,*) "EoSType = ColdTable"
+    write(*,"(A)") "EoSType = ColdTable"
   else if(eostype.eq.COLDYE) then
-    write(*,*) "EoSType = ColdBetaYe"
+    write(*,"(A)") "EoSType = ColdBetaYe"
   else
-    print *, 'Error, eostype ', eostype, ' is not recognized.'    
+    write(*,"(A,I1,A)") 'Error, eostype ', eostype, ' is not recognized.'    
   end if
 
   if(eostype.eq.BETA) then
-    write(6,"(A6,I4,A6,I4)") "Nrho=",nr,"NT=",nt
+    write(*,"(A,I6,A,I6)") "Nrho =",nr,"NT =",nt
   else if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
-    write(6,"(A6,I4)") "Nrho=",nr
+    write(*,"(A,I6)") "Nrho =",nr
   else  
-    write(6,"(A6,I4,A5,I4,A6,I4)") "Nrho=",nr,"Nye=",ny,"NT=",nt
+    write(*,"(A,I6,A,A,I6,A,A,I6)") "Nrho =",nr,"     ","Nye =",ny,"     ","NT =",nt
   end if
 
-  write(6,"(A8, E15.6, A11, E15.6)") "RhoMin=",rmin/rhounit, &
-        "RhoMax=",rmax/rhounit
+  write(*,"(A, E15.6, A, A, E15.6)") "RhoMin =",rmin/rhounit,"      ",&
+        "RhoMax =",rmax/rhounit
+
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.DERIVS) &
-	.or.(eostype.eq.MUX)) then
-    write(6,"(A7, E15.6, A10, E15.6)") "YeMin=",ymin, &
-          "YeMax=",ymax
+    .or.(eostype.eq.MUX)) then
+    write(*,"(A, E15.6, A, A, E15.6)") "YeMin =",ymin,"      ",&
+      "YeMax =",ymax
   end if
 
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.BETA) &
-	.or.(eostype.eq.DERIVS).or.(eostype.eq.MUX)) then
-    write(6,"(A6, E15.6, A9, E15.6)") "Tmin=",tmin, &
-          "Tmax=",tmax
+    .or.(eostype.eq.DERIVS).or.(eostype.eq.MUX)) then
+    write(*,"(A, E15.6, A, A, E15.6)") "Tmin =",tmin,"      ",&
+      "Tmax =",tmax
   end if
 
-  kappa = 100.d0
+  kappa = 100.d0    ! for our output of gamma s.t. pressure=kappa*rho^gamma
   HeatCapacity = 1.6d-3
   GammaTh = 5.d0/3.d0
   gtfac = (GammaTh-1.d0)/GammaTh
   if((eostype.ne.MICRO).and.(eostype.ne.DERIVS).and.(eostype.ne.MUX) &
 	.and.(eostype.ne.COLDYE)) then
-    write(6,"(A13, E15.6)") "HeatCapacity=",HeatCapacity," GammaTh=",GammaTh
-    write(6,"(A10, E15.6)") "Kappa=",kappa
+    write(*,"(A, E15.6)") "HeatCapacity =",HeatCapacity,&
+      "GammaTh =",GammaTh,&
+      "Kappa =",kappa
   end if
-  write(*,*) "RhoSpacing = Log"
+  write(*,"(A)") "RhoSpacing = Log"
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.DERIVS) &
 	.or.(eostype.eq.MUX)) then
-    write(*,*) "YeSpacing = Linear"
+    write(*,"(A)") "YeSpacing = Linear"
   end if
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.BETA) &
 	.or.(eostype.eq.DERIVS).or.(eostype.eq.MUX)) then
-    write(*,*) "TSpacing = Log"
+    write(*,"(A)") "TSpacing = Log"
   end if
 
   ! ***** Print Table ************************************************************************
@@ -351,25 +353,25 @@ program driver
 	end if
 
         if(eostype.eq.MICRO) then
-          write(6,"(1P10E15.6)") xent,xxn,xxp,xxa,xxh,xabar,xzbar,theta	
+          write(*,"(1P10E15.6)") xent,xxn,xxp,xxa,xxh,xabar,xzbar,theta	
 	else if(eostype.eq.MUX) then
-	  write(6,"(1P10E15.6)") xmu_e,xmu_p-xmu_n,xxn,xxp,xxh,xabar,xzbar
+	  write(*,"(1P10E15.6)") xmu_e,xmu_p-xmu_n,xxn,xxp,xxh,xabar,xzbar
 	else if(eostype.eq.DERIVS) then
-	  write(6,"(1P10E15.6)") pgam,dPds,dPdY,xent
+	  write(*,"(1P10E15.6)") pgam,dPds,dPdY,xent
 	else if(eostype.eq.COLDYE) then
-	  write(6,"(1P10E15.6)") xrho, xye
+	  write(*,"(1P10E15.6)") xrho, xye
         else if ((eostype.eq.FULL).or.(eostype.eq.BETA).or.(eostype.eq.COLD)) then
 	  cs = 0.d0
 	  if(xcs2.gt.0.d0) cs = sqrt(xcs2/(1.0+xenr+xprs/xrho))
-          write(6,"(1P10E15.8)") EoverRho,GammaP,cs
+          write(*,"(1P10E15.8)") EoverRho,GammaP,cs
 	else
-	  print *, 'Error, eostype ', eostype, ' is not recognized.'
+          write(*,"(A,I1,A)") 'Error, eostype ', eostype, ' is not recognized.'    
         end if
       end do ! END for r
     end do ! END for y
   end do ! END for t
 
-  !write(*,*) "hmin=",hmin
+  !write(*,"(A,E15.6)") "hmin =",hmin
 
 end program driver
 
