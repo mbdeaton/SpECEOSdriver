@@ -111,24 +111,24 @@ program driver
   !   LS220_450r_270t_50y_062211.h5    ! higher res made to explore nonsmoothness in original table
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = COLD
+  eostype = MICRO
   eos = HSHEN2_2
   USER_CHOOSES_BOUNDS = .true.
 
   ! Choose bounds different than table's intrinsic bounds in r,t,y
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
-  lrmin = 3d0
-  lrmax = 14.79d0
+  lrmin = 8d0
+  lrmax = 15.99d0
   ltmin = -2.0d0
   ltmax = 2.5d0
   ymin = 0.01d0
   ymax = 0.64d0
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  nr = 2000
+  nr = 250
   nt = 120
-  ny = 30
+  ny = 100
 
   ! ***** reset table limits and resolution *****************************************************
   if(eos.eq.HSHEN2_1) then
