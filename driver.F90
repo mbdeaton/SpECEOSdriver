@@ -111,14 +111,14 @@ program driver
   !   LS220_450r_270t_50y_062211.h5    ! higher res made to explore nonsmoothness in original table
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = MICRO
+  eostype = COLD
   eos = HSHEN2_2
   USER_CHOOSES_BOUNDS = .true.
 
   ! Choose bounds different than table's intrinsic bounds in r,t,y
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
-  lrmin = 8d0
+  lrmin = 3d0
   lrmax = 15.99d0
   ltmin = -2.0d0
   ltmax = 2.5d0
@@ -126,7 +126,7 @@ program driver
   ymax = 0.64d0
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  nr = 250
+  nr = 2000
   nt = 120
   ny = 100
 
@@ -328,12 +328,6 @@ program driver
 	  pgam = pgam/(c2unit*rhounit)
 	end if
 
-	xentthet = 0.551d0
-        theta = rtnewt_findtheta(ent_mismatch,tmin,tmax,RTACC,xrho,xye,xentthet)
-        call nuc_eos_full(xrho,theta,xye,xenr,xprs,xent,xcs2,xdedt,&
-          xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
-          xmuhat,keytemp,keyerr)
-
         xrho = xrho/rhounit
         xenr = xenr/eomunit
         xcs2 = xcs2/c2unit
@@ -396,10 +390,10 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp)
   fval = xmu_n - xmu_p - xmu_e
   !write(*,*) "fval=", fval," n=",xmu_n,", p=", xmu_p,", e=",xmu_e
 
-  ymin = 0.035d0
+  ymin = 0.01d0 ! TODO (Brett) put this back if test doesn't work (3.8.12)
 
   ye_m = xye - EPS
-  if(ye_m.lt.ymin) ye_m = ymin
+  if(ye_m.lt.ymin) ye_m = ymin ! TODO (Brett) put this back if test doesn't work (3.8.12)
   call nuc_eos_full(xrho,xtemp,ye_m,xenr,xprs,xent,xcs2,xdedt,&
        xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
        xmuhat,keytemp,keyerr)
@@ -415,18 +409,16 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp)
 
   fderiv = (f_p - f_m)/(2.d0*EPS)
 
-  ymin = 0.035d0
-  deriv_crit = 1.01d0*fval/(xye-ymin)
-!  deriv_crit = 1.01d0*fval/(xye-3.162277660168379E-02)
-!  write(*,*) "  df=",fderiv,",  df_c=",deriv_crit
-  if(abs(fderiv).lt.abs(deriv_crit)) then
-    fderiv = deriv_crit
-  end if
-
+  deriv_crit = 1.01d0*fval/(xye-ymin) ! TODO (Brett) put this back if test doesn't work (3.8.12)
+  !deriv_crit = 1.01d0*fval/(xye-3.162277660168379E-02)
+  !write(*,*) "  df=",fderiv,",  df_c=",deriv_crit
+  if(abs(fderiv).lt.abs(deriv_crit)) then ! TODO (Brett) put this back if test doesn't work (3.8.12)
+    fderiv = deriv_crit ! TODO (Brett) put this back if test doesn't work (3.8.12)
+  end if ! TODO (Brett) put this back if test doesn't work (3.8.12)
 
 END SUBROUTINE mu_mismatch
 
-	FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp)
+FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp)
 	!USE nrtype; USE nrutil, ONLY : nrerror
 	IMPLICIT NONE
 	REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xtemp
@@ -494,7 +486,7 @@ END SUBROUTINE mu_mismatch
 !	end do
 	!call nrerror('rtnewt_findYe exceeded maximum iterations')
         write(*,*) "rtnewt_findYe exceeded maximum iterations"
-	END FUNCTION rtnewt_findYe
+END FUNCTION rtnewt_findYe
 
 SUBROUTINE ent_mismatch(xtemp,fval,fderiv,xrho,xye,xentGoal)
   !USE nrtype
