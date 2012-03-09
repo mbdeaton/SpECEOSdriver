@@ -4,16 +4,16 @@ program driver
   implicit none
 
   interface
-	FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp)
+	FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin)
 	!USE nrtype; USE nrutil, ONLY : nrerror
 	IMPLICIT NONE
-	REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xtemp
+	REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xtemp,tableymin
 	REAL*8 :: rtnewt_findYe
 	INTERFACE
-		SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp)
+		SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp,tableymin)
 		!USE nrtype
 		IMPLICIT NONE
-		REAL*8, INTENT(IN)  :: x,xrho,xtemp
+		REAL*8, INTENT(IN)  :: x,xrho,xtemp,tableymin
 		REAL*8, INTENT(OUT) :: fval,fderiv
 		END SUBROUTINE funcd
 	END INTERFACE
@@ -32,10 +32,10 @@ program driver
 		END SUBROUTINE funcd
 	END INTERFACE
 	END FUNCTION rtnewt_findtheta
-	SUBROUTINE mu_mismatch(x,fval,fderiv,xrho,xtemp)
+	SUBROUTINE mu_mismatch(x,fval,fderiv,xrho,xtemp,tableymin)
 	!USE nrtype
 	IMPLICIT NONE
-	REAL*8, INTENT(IN)  :: x,xrho,xtemp
+	REAL*8, INTENT(IN)  :: x,xrho,xtemp,tableymin
 	REAL*8, INTENT(OUT) :: fval,fderiv
 	END SUBROUTINE mu_mismatch
 	SUBROUTINE ent_mismatch(x,fval,fderiv,xye,xentGoal)
@@ -46,7 +46,7 @@ program driver
 	END SUBROUTINE ent_mismatch
   end interface
 
-  real*8 xrho,xye,xtemp
+  real*8 xrho,xye,xtemp,tableymin
   real*8 xenr,xprs,xent,xcs2,xdedt,xmunu
   real*8 xdpderho,xdpdrhoe
   integer keytemp,keyerr
@@ -90,7 +90,7 @@ program driver
   c2unit = (xunit/tunit)**2
   eomunit = c2unit
 
-  ! Define types and versions of tables
+  ! Define types of tables
   FULL = 1     ! internal energy in 3D table
   BETA = 2     ! internal energy in 2D table, with ye=beta_equil
   COLD = 3     ! internal energy in 1D table, with t=tmin, ye=beta_equil
@@ -98,6 +98,8 @@ program driver
   MICRO = 5    ! microphysical potentials in 3D table
   MUX = 6      ! chemical potentials in 3D table
   COLDYE = 7   ! Ye in 1D table, with t=tmin, ye=beta_equil
+
+  ! Define versions of tables
   HSHEN2_1 = 1 ! myshen_test_220r_180t_50y_extT_analmu_20100322_SVNr28.h5
   HSHEN2_2 = 2 ! HShenEOS_rho220_temp180_ye65_version2.0_20111026_EOSmaker_svn9.h5
                !   wider range and higher res than 2_1, also an energy shift
@@ -111,15 +113,16 @@ program driver
   !   LS220_450r_270t_50y_062211.h5    ! higher res made to explore nonsmoothness in original table
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = COLD
+  eostype = BETA
   eos = HSHEN2_2
   USER_CHOOSES_BOUNDS = .true.
 
   ! Choose bounds different than table's intrinsic bounds in r,t,y
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
-  lrmin = 3d0
+  lrmin = 8d0
   lrmax = 15.99d0
+  !lrmax = 14.79d0    ! for HS_ColdTable_short (to append a polytrope)
   ltmin = -2.0d0
   ltmax = 2.5d0
   ymin = 0.01d0
@@ -133,32 +136,35 @@ program driver
   ! ***** reset table limits and resolution *****************************************************
   if(eos.eq.HSHEN2_1) then
     call readtable("myshen_test_220r_180t_50y_extT_analmu_20100322_SVNr28.h5")
+    tableymin = 0.015d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
       lrmax = 15.36d0
       ltmin = -2.0d0
       ltmax = 2.3d0
-      ymin = 0.015d0
+      ymin = tableymin
       ymax = 0.55d0
     end if
   else if (eos.eq.HSHEN2_2) then
     call readtable("HShenEOS_rho220_temp180_ye65_version2.0_20111026_EOSmaker_svn9.h5")
+    tableymin = 0.01d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
       lrmax = 15.99d0
       ltmin = -2.0d0
       ltmax = 2.5d0
-      ymin = 0.01d0
+      ymin = tableymin
       ymax = 0.64d0    ! seems 0.65 is out of bounds
     end if
   else if (eos.eq.LS220) then
     call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
+    tableymin = 0.035d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
       lrmax = 16d0
       ltmin = -2.0d0
       ltmax = 2.4d0
-      ymin = 0.035d0
+      ymin = tableymin
       ymax = 0.53d0
     end if
   else
@@ -193,15 +199,17 @@ program driver
   else if(eostype.eq.FULL) then
     write(*,"(A)") "EoSType = Tabulated"
   else if(eostype.eq.COLD) then
+    write(*,"(A,E15.6)") "# T = ", tmin
     write(*,"(A)") "EoSType = ColdTable"
   else if(eostype.eq.COLDYE) then
+    write(*,"(A,E15.6)") "# T = ", tmin
     write(*,"(A)") "EoSType = ColdBetaYe"
   else
     write(*,"(A,I1,A)") 'Error, eostype ', eostype, ' is not recognized.'    
   end if
 
   if(eostype.eq.BETA) then
-    write(*,"(A,I6,A,I6)") "Nrho =",nr,"NT =",nt
+    write(*,"(A,I6,A,A,I6)") "Nrho =",nr,"     ","NT =",nt
   else if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
     write(*,"(A,I6)") "Nrho =",nr
   else  
@@ -270,7 +278,7 @@ program driver
 	!xye   = 0.15d0
 	! set xye to satisfy beta_equil
         if((eostype.eq.BETA).or.(eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
-          xye = rtnewt_findYe(mu_mismatch,ymin,ymax,RTACC,xrho,xtemp)
+          xye = rtnewt_findYe(mu_mismatch,ymin,ymax,RTACC,xrho,xtemp,tableymin)
         end if
 
 	! Extrapolate to T=0
@@ -370,10 +378,10 @@ program driver
 end program driver
 
 ! ****************************************************************************************
-SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp)
+SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin)
   !USE nrtype
   IMPLICIT NONE
-  REAL*8, INTENT(IN)  :: xye,xrho,xtemp
+  REAL*8, INTENT(IN)  :: xye,xrho,xtemp,tableymin
   REAL*8, INTENT(OUT) :: fval,fderiv
   real*8 :: xenr,xprs,xent,xcs2,xdedt,xdpderho,xdpdrhoe
   real*8 :: xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,xmuhat
@@ -390,72 +398,71 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp)
   fval = xmu_n - xmu_p - xmu_e
   !write(*,*) "fval=", fval," n=",xmu_n,", p=", xmu_p,", e=",xmu_e
 
-  ymin = 0.01d0 ! TODO (Brett) put this back if test doesn't work (3.8.12)
-
+  ! set lower values for symmetric deriv
   ye_m = xye - EPS
-  if(ye_m.lt.ymin) ye_m = ymin ! TODO (Brett) put this back if test doesn't work (3.8.12)
+  if(ye_m.lt.tableymin) ye_m = tableymin
   call nuc_eos_full(xrho,xtemp,ye_m,xenr,xprs,xent,xcs2,xdedt,&
        xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
        xmuhat,keytemp,keyerr)
   f_m = xmu_n - xmu_p - xmu_e
 
+  ! set upper values for symmetric deriv
   ye_p = ye_m + 2.d0*EPS
   call nuc_eos_full(xrho,xtemp,ye_p,xenr,xprs,xent,xcs2,xdedt,&
        xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
        xmuhat,keytemp,keyerr)
   f_p = xmu_n - xmu_p - xmu_e
 
-  f_m = xmu_n - xmu_p - xmu_e
+  !f_m = xmu_n - xmu_p - xmu_e ! TODO (Brett) I think this should not be here, so I've !ed it
 
   fderiv = (f_p - f_m)/(2.d0*EPS)
 
-  deriv_crit = 1.01d0*fval/(xye-ymin) ! TODO (Brett) put this back if test doesn't work (3.8.12)
-  !deriv_crit = 1.01d0*fval/(xye-3.162277660168379E-02)
+  ! keep next guess within ye-bounds
+  deriv_crit = 1.01d0*fval/(xye-tableymin)
   !write(*,*) "  df=",fderiv,",  df_c=",deriv_crit
-  if(abs(fderiv).lt.abs(deriv_crit)) then ! TODO (Brett) put this back if test doesn't work (3.8.12)
-    fderiv = deriv_crit ! TODO (Brett) put this back if test doesn't work (3.8.12)
-  end if ! TODO (Brett) put this back if test doesn't work (3.8.12)
-
+  if(abs(fderiv).lt.abs(deriv_crit)) then
+    fderiv = deriv_crit
+  end if
 END SUBROUTINE mu_mismatch
 
-FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp)
-	!USE nrtype; USE nrutil, ONLY : nrerror
-	IMPLICIT NONE
-	REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xtemp
-	REAL*8 :: rtnewt_findYe
-	INTERFACE
-		SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp)
-		!USE nrtype
-		IMPLICIT NONE
-		REAL*8, INTENT(IN) :: x,xrho,xtemp
-		REAL*8, INTENT(OUT) :: fval,fderiv
-		END SUBROUTINE funcd
-	END INTERFACE
-	INTEGER, PARAMETER :: MAXIT=40
-	INTEGER :: j
-	REAL*8 :: df,dx,f,fl,fh,dfl,dfh, xl,xh
-!	rtnewt_findYe=0.5d0*(x1+x2)
-!	call funcd(rtnewt_findYe,f,df,xrho,xtemp)
-	if(x1<x2) then
-	  xl = x1
-	  xh = x2
-	else
-	  xl = x2
-	  xh = x1
-	end if
-	call funcd(xl,fl,dfl,xrho,xtemp)
-	call funcd(xh,fh,dfh,xrho,xtemp)
+FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin)
+  !USE nrtype; USE nrutil, ONLY : nrerror
+  IMPLICIT NONE
+  REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xtemp,tableymin
+  REAL*8 :: rtnewt_findYe
+  INTERFACE
+	SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp,tableymin)
+	  !USE nrtype
+	  IMPLICIT NONE
+	  REAL*8, INTENT(IN) :: x,xrho,xtemp,tableymin
+	  REAL*8, INTENT(OUT) :: fval,fderiv
+	END SUBROUTINE funcd
+  END INTERFACE
+  INTEGER, PARAMETER :: MAXIT=40
+  INTEGER :: j
+  REAL*8 :: df,dx,f,fl,fh,dfl,dfh, xl,xh
+  !rtnewt_findYe=0.5d0*(x1+x2)
+  !call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin)
+  if(x1<x2) then
+    xl = x1
+    xh = x2
+  else
+    xl = x2
+    xh = x1
+  end if
+  call funcd(xl,fl,dfl,xrho,xtemp,tableymin)
+  call funcd(xh,fh,dfh,xrho,xtemp,tableymin)
 
-!	write(*,*) "fl=",fl,"fh=",fh
+  !write(*,*) "fl=",fl,"fh=",fh
 
-	if(abs(fl)<xacc) then
-	  rtnewt_findYe = xl
-	  RETURN
-	end if
-	if(abs(fh)<xacc) then
-	  rtnewt_findYe = xh
-	  RETURN
-	end if
+  if(abs(fl)<xacc) then
+    rtnewt_findYe = xl
+    RETURN
+  end if
+  if(abs(fh)<xacc) then
+    rtnewt_findYe = xh
+    RETURN
+  end if
 
 	if(fl*fh>0.d0) then
 	  rtnewt_findYe = xl
@@ -463,7 +470,7 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp)
 	else 
 	  rtnewt_findYe=0.5d0*(xl+xh)
 	  do j=1,MAXIT
-	    call funcd(rtnewt_findYe,f,df,xrho,xtemp)
+	    call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin)
 	    if(abs(f)<xacc) RETURN
 	    if(f*fl<0.d0) then
 		xh = rtnewt_findYe
@@ -476,7 +483,7 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp)
 	  end do
 	end if
 !	do j=1,MAXIT
-!		call funcd(rtnewt_findYe,f,df,xrho,xtemp)
+!		call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin)
 !		dx=f/df
 !		rtnewt_findYe=rtnewt_findYe-dx
 !		if ((x1-rtnewt_findYe)*(rtnewt_findYe-x2) < 0.0)&
@@ -527,8 +534,6 @@ SUBROUTINE ent_mismatch(xtemp,fval,fderiv,xrho,xye,xentGoal)
   if(abs(fderiv).lt.abs(deriv_crit)) then
     fderiv = deriv_crit
   end if
-
-
 END SUBROUTINE ent_mismatch
 
 	FUNCTION rtnewt_findtheta(funcd,x1,x2,xacc,xrho,xye,xent)
