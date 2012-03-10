@@ -70,7 +70,7 @@ program driver
   real*8 xprs_yp,xent_yp,dPdT,dsdT,dPdY,dsdY,dPdYs,dPds
   real*8 hmin,cs
   integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,eostype
-  integer HSHEN2_1,HSHEN2_2,LS220,eos
+  integer HSHEN2_1,HSHEN2_2,LS220_1,LS220_2,eos
   logical USER_CHOOSES_BOUNDS ! true if user is to override the table's intrinsic bounds in r,t,y
 
   RTACC = 1.e-5
@@ -104,29 +104,32 @@ program driver
   HSHEN2_2 = 2 ! HShenEOS_rho220_temp180_ye65_version2.0_20111026_EOSmaker_svn9.h5
                !   wider range and higher res than 2_1, also an energy shift
                !   s.t. eps2_2=eps2_1+(a few MeV per nucleon)
-  LS220 = 3    ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
+  LS220_1 = 3  ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
+  LS220_2 = 4  ! LS220_450r_270t_50y_062211.h5
+	       !   higher res made to examine nonsmoothness in original table
+	       !   looks like higher res has same nonsmooth features
 
   ! Other defunct tables, or tables with unknown bounds:
   !   myshen_180r_180t_50y_std_20090128.h5
   !   myhshen2010_220r_180t_63y_analmu_20100831.h5
   !   LS220_234r_136t_50y_200909.h5
-  !   LS220_450r_270t_50y_062211.h5    ! higher res made to explore nonsmoothness in original table
 
   ! ***** User-Chosen Parameters ************************************************************
   eostype = FULL
-  eos = LS220
-  USER_CHOOSES_BOUNDS = .true.
+  eos = LS220_1
+  USER_CHOOSES_BOUNDS = .false.
 
   ! Choose bounds different than table's intrinsic bounds in r,t,y
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
   lrmin = 8d0
-  lrmax = 16d0
+  lrmax = 15d0
   !lrmax = 14.79d0    ! for HS_ColdTable_short (to append a polytrope)
-  ltmin = -2.0d0
-  ltmax = 2.4d0
+  ltmin = -1.0d0
+  ltmax = 1.95d0
   ymin = 0.035d0
-  ymax = 0.53d0
+  !ymax = 0.64d0
+  ymax = 10**(-0.3d0)
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
   nr = 250
@@ -156,8 +159,19 @@ program driver
       ymin = tableymin
       ymax = 0.64d0    ! seems 0.65 is out of bounds
     end if
-  else if (eos.eq.LS220) then
+  else if (eos.eq.LS220_1) then
     call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
+    tableymin = 0.035d0
+    if (.not.USER_CHOOSES_BOUNDS) then
+      lrmin = 3d0
+      lrmax = 16d0
+      ltmin = -2.0d0
+      ltmax = 2.4d0
+      ymin = tableymin
+      ymax = 0.53d0
+    end if
+  else if (eos.eq.LS220_2) then
+    call readtable("LS220_450r_270t_50y_062211.h5")
     tableymin = 0.035d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
@@ -413,13 +427,10 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin)
        xmuhat,keytemp,keyerr)
   f_p = xmu_n - xmu_p - xmu_e
 
-  !f_m = xmu_n - xmu_p - xmu_e ! TODO (Brett) I think this should not be here, so I've !ed it
-
   fderiv = (f_p - f_m)/(2.d0*EPS)
 
   ! keep next guess within ye-bounds
   deriv_crit = 1.01d0*fval/(xye-tableymin)
-  !write(*,*) "  df=",fderiv,",  df_c=",deriv_crit
   if(abs(fderiv).lt.abs(deriv_crit)) then
     fderiv = deriv_crit
   end if
