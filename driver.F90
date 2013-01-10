@@ -69,6 +69,7 @@ program driver
   real*8 xprs_tp,xent_tp,xenr_tp,xprs_tpp,xent_tpp,xenr_tpp
   real*8 xprs_yp,xent_yp,dPdT,dsdT,dPdY,dsdY,dPdYs,dPds
   real*8 hmin,cs
+  real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin
   integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,eostype
   integer HSHEN2_1,HSHEN2_2,LS220_1,LS220_2,eos
   logical USER_CHOOSES_BOUNDS ! true if user is to override the table's intrinsic bounds in r,t,y
@@ -274,6 +275,9 @@ program driver
   ! [2] gamma,   so that P=kappa*rho^gamma, where kappa is the constant defined above
   ! [3] cs,      relativistic adiabatic sound speed
   hmin = 1.d0
+  rho_at_hmin = rmin
+  temp_at_hmin = tmin
+  ye_at_hmin = ymin
   do i=0, nt-1
     if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
       xtemp = tmin
@@ -366,6 +370,9 @@ program driver
 
 	if(1.0+xenr+xprs/xrho.lt.hmin) then
 	  hmin = 1.0+xenr+xprs/xrho
+	  rho_at_hmin = xrho
+	  temp_at_hmin = xtemp
+	  ye_at_hmin = xye
 	end if
 
         if(eostype.eq.MICRO) then
@@ -387,7 +394,10 @@ program driver
     end do ! END for y
   end do ! END for t
 
-  !write(*,"(A,E15.6)") "hmin =",hmin
+  write(*,"(A,E15.6)") "MinimumEnthalpy = ",hmin
+  write(*,"(A,E15.6)") "rho_at_hmin = ",rho_at_hmin
+  write(*,"(A,E15.6)") "temp_at_hmin = ",temp_at_hmin
+  write(*,"(A,E15.6)") "ye_at_hmin = ",ye_at_hmin
 
 end program driver
 
