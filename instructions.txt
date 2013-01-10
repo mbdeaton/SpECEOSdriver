@@ -28,6 +28,10 @@ $ make -s driver
 Make the table:
 $ driver > mytable.dat
 
+remove final lines of output: "MinimumEnthalpy...etc", and move
+"MinimumEnthalpy=" to the last line of the meta data at the top
+of mytable.dat.
+
 Scan the table for nans, and perform other sanity checks (e.g.
      plot the various columns).
 
