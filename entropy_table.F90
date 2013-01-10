@@ -69,6 +69,7 @@ program driver
   real*8 xprs_tp,xent_tp,xenr_tp,xprs_tpp,xent_tpp,xenr_tpp
   real*8 xprs_yp,xent_yp,dPdT,dsdT,dPdY,dsdY,dPdYs,dPds
   real*8 hmin,cs
+  real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin
   real*8 ent_min,ent_max, lent_min,lent_max
 
   integer EOSTABLE,TEMP_TO_ENT,ENT_TO_TEMP,MICRO,MUX,output
@@ -123,7 +124,8 @@ program driver
   if(eos.eq.SHEN) then
     call readtable("myhshen2010_220r_180t_63y_analmu_20100831.h5")
   else
-    call readtable("LS220_450r_270t_50y_062211.h5")
+    !call readtable("LS220_450r_270t_50y_062211.h5")
+    call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
   end if
 
   if(output.eq.MICRO) then
@@ -191,6 +193,9 @@ program driver
   write(*,*) "SSpacing = Log"
 
   hmin = 1.d0
+  rho_at_hmin = 0.d0
+  temp_at_hmin = 1.d0
+  ye_at_hmin = 0.d0
   do i=0, nt-1
      if(output.eq.TEMP_TO_ENT) then
 	xtemp = 10**(ltmin + i*(ltmax-ltmin)/(nt-1))
@@ -221,6 +226,9 @@ program driver
 
 	if(1.0+xenr+xprs/xrho.lt.hmin) then
 	  hmin = 1.0+xenr+xprs/xrho
+	  rho_at_hmin = xrho
+	  temp_at_hmin = xtemp
+	  ye_at_hmin = xye
 	end if
 
 	  cs = 0.d0
@@ -241,7 +249,10 @@ program driver
     end do
   end do
 
-!  write(*,*) "hmin=",hmin
+  write(*,*) "hmin=",hmin
+  write(*,*) "rho_at_hmin=",rho_at_hmin
+  write(*,*) "temp_at_hmin=",temp_at_hmin
+  write(*,*) "ye_at_hmin=",ye_at_hmin
 
 end program driver
 
