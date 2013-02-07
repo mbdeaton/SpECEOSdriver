@@ -38,10 +38,10 @@ program driver
 	REAL*8, INTENT(IN)  :: x,xrho,xtemp
 	REAL*8, INTENT(OUT) :: fval,fderiv
 	END SUBROUTINE mu_mismatch
-	SUBROUTINE ent_mismatch(x,fval,fderiv,xye,xentGoal)
+	SUBROUTINE ent_mismatch(x,fval,fderiv,xrho,xye,xentGoal)
 	!USE nrtype
 	IMPLICIT NONE
-	REAL*8, INTENT(IN)  :: x,xye,xentGoal
+	REAL*8, INTENT(IN)  :: x,xye,xrho,xentGoal
 	REAL*8, INTENT(OUT) :: fval,fderiv
 	END SUBROUTINE ent_mismatch
   end interface
