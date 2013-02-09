@@ -126,13 +126,11 @@ program driver
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
   lrmin = 8d0
-  lrmax = 15d0
-  !lrmax = 14.79d0    ! for HS_ColdTable_short (to append a polytrope)
-  ltmin = -1.0d0
-  ltmax = 1.95d0
-  ymin = 0.035d0
-  !ymax = 0.64d0
-  ymax = 10**(-0.3d0)
+  lrmax = 15.3d0
+  ltmin = -2d0
+  ltmax = 1.875d0
+  ymin = 0.05d0
+  ymax = 0.559d0
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
   nr = 2000
@@ -192,12 +190,12 @@ program driver
       ! I calculate the density range from G. Shen 2011:
       !   log_10 n (fm^{-3}) \in [-8,0.175],
       !   with free nucleon mass = 1.78e-24 g
-      lrmin = 6.2d0
-      lrmax = 14.3d0
-      ltmin = -0.8d0
-      ltmax = 1.875d0
+      lrmin = 3d0 ! the documented lrmin (6.2) is actually not the bottom of the table
+      lrmax = 15.3d0 ! the documented lrmax (14.3) is actually not the top of the table
+      ltmin = -2d0 ! the documented ltmin (-0.8) is actually not the bottom of the table
+      ltmax = 1.875d0 ! the documented ltmax (1.875) is actually not the top of the table
       ymin = tableymin
-      ymax = 0.56d0
+      ymax = 0.559d0 ! the documented ymax (0.56) is actually off the table
     end if
   else if (eos.eq.HEMPEL_SFHO) then
     call readtable("Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5")
@@ -207,11 +205,11 @@ program driver
       ! I calculate the density range from the manual:
       !   log_10 n (fm^{-3}) \in [-12,1]
       lrmin = 2.3d0
-      lrmax = 15.2d0
+      lrmax = 15.5d0 ! the documented lrmax (15.2) is actually not the top off the table
       ltmin = -1d0
       ltmax = 2.2d0
       ymin = tableymin
-      ymax = 0.6d0
+      ymax = 0.599d0 ! the documented ymax (0.6) is actually off the table
     end if
   else
     write(*,"(A,I1,A)") 'Error, eos ', eos, ' is not recognized.'    
