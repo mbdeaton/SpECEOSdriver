@@ -1,0 +1,19 @@
+# some definitions controlling compilation
+export HAVE_HDF5=1
+export F90=gfortran
+export F90FLAGS=-g -O3
+export LDFLAGS=$(F90FLAGS)
+export HDF5DIR=/usr/local
+export HDF5LIBS=-L$(HDF5DIR)/lib -lhdf5_fortran -lhdf5 #-lz
+export HDF5INCS=-I$(HDF5DIR)/include
+export LAPACKLIBS=-llapack  #-lg2c
+export LIBS+=$(LAPACKLIBS)
+
+# NOTE 5.9.13: I haven't gotten this make.inc to work on MacOS 10.8 yet.
+#   I left off with trying to find the hdf5 libraries needed; it seems that
+#   hdf5 with fortran stuff is missing from fyodor, even though I installed
+#   with brew install hdf5 --enable-fortran.
+
+#don't use lapack for the moment
+#export LAPACKLIBS=-llapack  -lg2c
+#export LIBS+=$(LAPACKLIBS)

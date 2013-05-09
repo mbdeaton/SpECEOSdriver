@@ -1,5 +1,5 @@
 Instructions for compiling and using SpECEOSdriver
-Brett Deaton - 3.5.12
+Brett Deaton - begun 3.5.12
 brett.deaton@gmail.com
 
 This EOSdriver is an edited version of Evan O'Connor and Christian
@@ -10,11 +10,13 @@ This EOSdriver is an edited version of Evan O'Connor and Christian
 
 ***** Compiling *****
 System requirements are a Fortran90 compiler and the HDF5 libraries
-with Fortran90 module files and bindings. Make symbolic links to the
-     appropriate Makefile and make.inc in MakefileRules/. e.g.:
+with Fortran90 module files and bindings. The latter can be gotten on
+     a Mac OS with 'brew install hdf5 --enable-fortran'.
+Make symbolic links to the appropriate Makefile and make.inc in
+     MakefileRules/. e.g.:
 $ cd SpECEOSdriver
-$ ln -s MakefileRules/Makefile-Ubuntu-10_04-gfortran Makefile
-$ ln -s MakefileRules/make.inc-Ubuntu-10_04-gfortran make.inc
+$ ln -s MakefileRules/Makefile-generic Makefile
+$ ln -s MakefileRules/make.inc-MacOS_10_8 make.inc
 
 Download the appropriate h5 table from stellarcollapse.org.
 
