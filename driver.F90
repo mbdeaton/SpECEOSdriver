@@ -71,7 +71,7 @@ program driver
   real*8 hmin,cs
   real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin
   integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,eostype
-  integer HSHEN2_1,HSHEN2_2,LS220_1,LS220_2,GSHEN_NL3,HEMPEL_SFHO,eos
+  integer HSHEN_2011,LS_220,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
   logical USER_CHOOSES_BOUNDS ! true if user is to override the table's intrinsic bounds in r,t,y
 
   RTACC = 1.e-5
@@ -101,25 +101,17 @@ program driver
   COLDYE = 7   ! Ye in 1D table, with t=tmin, ye=beta_equil
 
   ! Define versions of tables
-  HSHEN2_1 = 1     ! myshen_test_220r_180t_50y_extT_analmu_20100322_SVNr28.h5
-  HSHEN2_2 = 2     ! HShenEOS_rho220_temp180_ye65_version2.0_20111026_EOSmaker_svn9.h5
-                   !   wider range and higher res than 2_1, also an energy shift
-                   !   s.t. eps2_2=eps2_1+(a few MeV per nucleon)
-  LS220_1 = 3      ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
-  LS220_2 = 4      ! LS220_450r_270t_50y_062211.h5
-	           !   higher res made to examine nonsmoothness in original table
-	           !   looks like higher res has same nonsmooth features
-  GSHEN_NL3 = 5    ! GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5
-  HEMPEL_SFHO = 6  ! Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5
-
-  ! Other defunct tables, or tables with unknown bounds:
-  !   myshen_180r_180t_50y_std_20090128.h5
-  !   myhshen2010_220r_180t_63y_analmu_20100831.h5
-  !   LS220_234r_136t_50y_200909.h5
+  HSHEN_2011 = 1   ! HShenEOS_rho220_temp180_ye65_version_1.1_20120817.h5
+  LS_220 = 2       ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
+  GSHEN_NL3 = 3    ! GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5
+  GSHEN_FSU21 = 4  ! GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5
+  HEMPEL_SFHO = 5  ! Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5
+  HEMPEL_SFHX = 6  ! Hempel_SFHxEOS_rho234_temp180_ye60_version_1.1_20120817.h5
+  HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = COLD
-  eos = GSHEN_NL3
+  eostype = FULL
+  eos = HSHEN_2011
   USER_CHOOSES_BOUNDS = .false.
 
   ! Choose bounds different than table's intrinsic bounds in r,t,y
@@ -133,47 +125,25 @@ program driver
   ymax = 0.559d0
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  nr = 2000
-  !nr = 250
+  !nr = 2000
+  nr = 250
   nt = 120
   ny = 100
 
   ! ***** reset table limits and resolution *****************************************************
-  if(eos.eq.HSHEN2_1) then
-    call readtable("myshen_test_220r_180t_50y_extT_analmu_20100322_SVNr28.h5")
-    tableymin = 0.015d0
-    if (.not.USER_CHOOSES_BOUNDS) then
-      lrmin = 3d0
-      lrmax = 15.36d0
-      ltmin = -2.0d0
-      ltmax = 2.3d0
-      ymin = tableymin
-      ymax = 0.55d0
-    end if
-  else if (eos.eq.HSHEN2_2) then
-    call readtable("HShenEOS_rho220_temp180_ye65_version2.0_20111026_EOSmaker_svn9.h5")
+  if (eos.eq.HSHEN_2011) then
+    call readtable("HShenEOS_rho220_temp180_ye65_version_1.1_20120817.h5")
     tableymin = 0.01d0
-    if (.not.USER_CHOOSES_BOUNDS) then
-      lrmin = 3d0
-      lrmax = 15.99d0
-      ltmin = -2.0d0
-      ltmax = 2.5d0
-      ymin = tableymin
-      ymax = 0.64d0    ! seems 0.65 is out of bounds
-    end if
-  else if (eos.eq.LS220_1) then
-    call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
-    tableymin = 0.035d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
       lrmax = 16d0
       ltmin = -2.0d0
-      ltmax = 2.4d0
+      ltmax = 2.5d0
       ymin = tableymin
-      ymax = 0.53d0
+      ymax = 0.65d0
     end if
-  else if (eos.eq.LS220_2) then
-    call readtable("LS220_450r_270t_50y_062211.h5")
+  else if (eos.eq.LS_220) then
+    call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
     tableymin = 0.035d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
@@ -187,29 +157,56 @@ program driver
     call readtable("GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5")
     tableymin = 0.05d0
     if (.not.USER_CHOOSES_BOUNDS) then
-      ! I calculate the density range from G. Shen 2011:
-      !   log_10 n (fm^{-3}) \in [-8,0.175],
-      !   with free nucleon mass = 1.78e-24 g
-      lrmin = 3d0 ! the documented lrmin (6.2) is actually not the bottom of the table
-      lrmax = 15.3d0 ! the documented lrmax (14.3) is actually not the top of the table
-      ltmin = -2d0 ! the documented ltmin (-0.8) is actually not the bottom of the table
-      ltmax = 1.875d0 ! the documented ltmax (1.875) is actually not the top of the table
+      lrmin = 3d0
+      lrmax = 15.39d0
+      ltmin = -2d0
+      ltmax = 2.5d0
       ymin = tableymin
-      ymax = 0.559d0 ! the documented ymax (0.56) is actually off the table
+      ymax = 0.56d0
+    end if
+  else if (eos.eq.GSHEN_FSU21) then
+    call readtable("GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5")
+    tableymin = 0.05d0
+    if (.not.USER_CHOOSES_BOUNDS) then
+      lrmin = 3d0
+      lrmax = 15.39d0
+      ltmin = -2d0
+      ltmax = 2.5d0
+      ymin = tableymin
+      ymax = 0.56d0
     end if
   else if (eos.eq.HEMPEL_SFHO) then
     call readtable("Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5")
-    ! I get the table range from Hempel manual v1.04
     tableymin = 0.01d0
     if (.not.USER_CHOOSES_BOUNDS) then
-      ! I calculate the density range from the manual:
-      !   log_10 n (fm^{-3}) \in [-12,1]
-      lrmin = 2.3d0
-      lrmax = 15.5d0 ! the documented lrmax (15.2) is actually not the top off the table
-      ltmin = -1d0
+      lrmin = 2.22025d0
+      lrmax = 15.5002d0
+      ltmin = -2d0
       ltmax = 2.2d0
       ymin = tableymin
-      ymax = 0.599d0 ! the documented ymax (0.6) is actually off the table
+      ymax = 0.6d0
+    end if
+  else if (eos.eq.HEMPEL_SFHX) then
+    call readtable("Hempel_SFHxEOS_rho234_temp180_ye60_version_1.1_20120817.h5")
+    tableymin = 0.01d0
+    if (.not.USER_CHOOSES_BOUNDS) then
+      lrmin = 2.22025d0
+      lrmax = 16.2202d0
+      ltmin = -2d0
+      ltmax = 2.2d0
+      ymin = tableymin
+      ymax = 0.6d0
+    end if
+  else if (eos.eq.HEMPEL_DD2) then
+    call readtable("Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5")
+    tableymin = 0.01d0
+    if (.not.USER_CHOOSES_BOUNDS) then
+      lrmin = 2.22025d0
+      lrmax = 16.2202d0
+      ltmin = -2d0
+      ltmax = 2.2d0
+      ymin = tableymin
+      ymax = 0.6d0
     end if
   else
     write(*,"(A,I1,A)") 'Error, eos ', eos, ' is not recognized.'    
@@ -222,7 +219,7 @@ program driver
   lymin = log10(ymin)
   lymax = log10(ymax)
 
-  ! reset output resolutions
+  ! reset output resolutions for lower-dimensional tables
   if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
      nt = 1
      ny = 1
