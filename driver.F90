@@ -71,7 +71,7 @@ program driver
   real*8 xprs_yp,xent_yp,dPdT,dsdT,dPdY,dsdY,dPdYs,dPds
   real*8 hmin,cs
   real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin
-  integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,eostype
+  integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,BETAYE,eostype
   integer HSHEN_2011,LS_220,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
   logical USER_CHOOSES_BOUNDS
   logical USER_CHOOSES_LOW_RHO_BOUND
@@ -93,16 +93,20 @@ program driver
   c2unit = (xunit/tunit)**2
   eomunit = c2unit
 
-  ! Define types of tables
+  ! Define types of tables:
+  ! Tables of full thermodynamic potentials
   FULL = 1     ! internal energy in 3D table
   BETA = 2     ! internal energy in 2D table, with ye=beta_equil
   COLD = 3     ! internal energy in 1D table, with t=tmin, ye=beta_equil
-  DERIVS = 4   ! thermodynamic derivs for testing
-  MICRO = 5    ! microphysical potentials in 3D table
-  MUX = 6      ! chemical potentials in 3D table
-  COLDYE = 7   ! Ye in 1D table, with t=tmin, ye=beta_equil
+  ! Tables of ye
+  BETAYE = 4   ! Ye in 2D table, with ye=beta_equil
+  COLDYE = 5   ! Ye in 1D table, with t=tmin, ye=beta_equil
+  ! Tables of other thermodynamic potentials
+  MICRO = 6    ! microphysical potentials in 3D table
+  MUX = 7      ! chemical potentials in 3D table
+  DERIVS = 8   ! thermodynamic derivs in 3D table (for testing)
 
-  ! Define versions of tables
+  ! Define versions of tables:
   HSHEN_2011 = 1   ! HShenEOS_rho220_temp180_ye65_version_1.1_20120817.h5
   LS_220 = 2       ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
   GSHEN_NL3 = 3    ! GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5
@@ -112,7 +116,7 @@ program driver
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = FULL
+  eostype = BETAYE
   eos = LS_220
 
   USER_CHOOSES_LOW_RHO_BOUND = .true. ! true if user is to override table's low bound in r
@@ -246,7 +250,7 @@ program driver
      nt = 1
      ny = 1
   end if
-  if(eostype.eq.BETA) then
+  if((eostype.eq.BETA).or.(eostype.eq.BETAYE)) then
      ny = 1
   end if
 
@@ -269,12 +273,17 @@ program driver
   else if(eostype.eq.COLDYE) then
     write(*,"(A,E15.6)") "# T = ", tmin
     write(*,"(A)") "EoSType = ColdBetaYe"
+  else if(eostype.eq.BETAYE) then
+    write(*,"(A)") "# 2D beta-equilibrium table"
+    write(*,"(A)") "EoSType = HotBetaYe"
   else
     write(*,"(A,I1,A)") 'Error, eostype ', eostype, ' is not recognized.'    
   end if
 
   if(eostype.eq.COLDYE) then
     write(*,"(A,I6)") "Nrho =",nr
+  else if(eostype.eq.BETAYE) then
+    write(*,"(A,I6,A,A,I6)") "Nrho =",nr,"     ","NT =",nt
   else  
     write(*,"(A,I6,A,A,I6,A,A,I6)") "Nrho =",nr,"     ","Nye =",ny,"     ","NT =",nt
   end if
@@ -289,7 +298,7 @@ program driver
   end if
 
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.BETA) &
-    .or.(eostype.eq.DERIVS).or.(eostype.eq.MUX)) then
+    .or.(eostype.eq.DERIVS).or.(eostype.eq.MUX).or.(eostype.eq.BETAYE)) then
     write(*,"(A, E15.6, A, A, E15.6)") "Tmin =",tmin,"      ",&
       "Tmax =",tmax
   end if
@@ -299,7 +308,7 @@ program driver
   GammaTh = 5.d0/3.d0
   gtfac = (GammaTh-1.d0)/GammaTh
   if((eostype.ne.MICRO).and.(eostype.ne.DERIVS).and.(eostype.ne.MUX) &
-	.and.(eostype.ne.COLDYE)) then
+	.and.(eostype.ne.COLDYE).and.(eostype.ne.BETAYE)) then
     write(*,"(A, E15.6)") "HeatCapacity =",HeatCapacity,&
       "GammaTh =",GammaTh,&
       "Kappa =",kappa
@@ -310,7 +319,7 @@ program driver
     write(*,"(A)") "YeSpacing = Linear"
   end if
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.BETA) &
-	.or.(eostype.eq.DERIVS).or.(eostype.eq.MUX)) then
+	.or.(eostype.eq.DERIVS).or.(eostype.eq.MUX).or.(eostype.eq.BETAYE)) then
     write(*,"(A)") "TSpacing = Log"
   end if
 
@@ -345,7 +354,8 @@ program driver
         !xtemp = 1.6d0
 	!xye   = 0.15d0
 	! set xye to satisfy beta_equil
-        if((eostype.eq.BETA).or.(eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
+        if((eostype.eq.BETA).or.(eostype.eq.COLD).or.(eostype.eq.COLDYE) &
+	.or.(eostype.eq.BETAYE)) then
           xye = rtnewt_findYe(mu_mismatch,ymin,ymax,RTACC,xrho,xtemp,tableymin)
         end if
 
@@ -433,6 +443,8 @@ program driver
 	  write(*,"(1P10E15.6)") pgam,dPds,dPdY,xent
 	else if(eostype.eq.COLDYE) then
 	  write(*,"(1P10E15.6)") xrho, xye
+	else if(eostype.eq.BETAYE) then
+	  write(*,"(1P10E15.6)") xye
         else if ((eostype.eq.FULL).or.(eostype.eq.BETA).or.(eostype.eq.COLD)) then
 	  cs = 0.d0
 	  if(xcs2.gt.0.d0) cs = sqrt(xcs2/(1.0+xenr+xprs/xrho))
