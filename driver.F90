@@ -58,6 +58,7 @@ program driver
   integer i,j,k
   integer nr, nt, ny
   real*8 ltmax, ltmin, lymin, lymax, lrmin, lrmax
+  real*8 lrmin_for_user_chooses_low_rho_bound
   real*8 tmax, tmin, ymin, ymax, rmin, rmax, tminout, tmaxout
   real*8 xunit,tunit,munit,rhounit,punit,eomunit,c2unit
   real*8 GammaP, EoverRho
@@ -72,7 +73,8 @@ program driver
   real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin
   integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,eostype
   integer HSHEN_2011,LS_220,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
-  logical USER_CHOOSES_BOUNDS ! true if user is to override the table's intrinsic bounds in r,t,y
+  logical USER_CHOOSES_BOUNDS
+  logical USER_CHOOSES_LOW_RHO_BOUND
 
   RTACC = 1.e-5
   keytemp = 1
@@ -111,10 +113,21 @@ program driver
 
   ! ***** User-Chosen Parameters ************************************************************
   eostype = FULL
-  eos = HSHEN_2011
-  USER_CHOOSES_BOUNDS = .false.
+  eos = LS_220
 
-  ! Choose bounds different than table's intrinsic bounds in r,t,y
+  USER_CHOOSES_LOW_RHO_BOUND = .true. ! true if user is to override table's low bound in r
+  ! Choose low density bound different than table's intrinsic bound in r.
+  !   This option is often used rather than USER_CHOOSES_BOUNDS because we want to honor
+  !   the table's intrinsic bounds in all vars, except the minimum rho, where we do not need
+  !   these lowest densities because we apply atmosphere treatment near rho=1e-10.
+  !   if USER_CHOOSES_LOW_RHO_BOUND then user must supply low density bound here
+  !   if .not.USER_CHOOSES_LOW_RHO_BOUND then this is never used
+  lrmin_for_user_chooses_low_rho_bound = 8d0
+
+  USER_CHOOSES_BOUNDS = .false. ! true if user is to override the table's bounds in r,t,y
+  ! Choose bounds different than table's intrinsic bounds in r,t,y.
+  !   This option is rarely used because the table's intrinsic bounds are representative
+  !   of the range of expected r,t,y achieved in evolutions.
   !   if USER_CHOOSES_BOUNDS then user must supply all of the bounds here
   !   if .not.USER_CHOOSES_BOUNDS then these are all overwritten
   lrmin = 8d0
@@ -123,6 +136,10 @@ program driver
   ltmax = 1.875d0
   ymin = 0.05d0
   ymax = 0.559d0
+
+  if (USER_CHOOSES_BOUNDS.and.USER_CHOOSES_LOW_RHO_BOUND) then
+    write(*,"(A,I1,A)") 'Error, user has specified a lower rho bound twice.'
+  end if
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
   !nr = 2000
@@ -209,7 +226,12 @@ program driver
       ymax = 0.6d0
     end if
   else
-    write(*,"(A,I1,A)") 'Error, eos ', eos, ' is not recognized.'    
+    write(*,"(A,I1,A)") 'Error, eos ', eos, ' is not recognized.'
+  end if
+
+  ! reset lrmin to user-chosen bound if this option is used
+  if (USER_CHOOSES_LOW_RHO_BOUND) then
+     lrmin = lrmin_for_user_chooses_low_rho_bound
   end if
 
   rmin = 10**lrmin
