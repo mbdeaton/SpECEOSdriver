@@ -30,7 +30,8 @@ $ make -s driver
 Make the table:
 $ driver > mytable.dat
 
-Scan the table for nans, and perform other sanity checks (e.g.
-    plot the various columns).
+Scan the table for nans, and perform other sanity checks, e.g.
+    plot the various columns:
+p './GShenFSU21_Tabulated.dat' u 0:1 ev ::11::259 w p
 Run the table through some sanity checks with EOSManipAndVis
     executables in SpEC code branch usr/deaton/EOSManipAndVis
