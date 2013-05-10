@@ -117,7 +117,7 @@ program driver
 
   ! ***** User-Chosen Parameters ************************************************************
   eostype = BETAYE
-  eos = LS_220
+  eos = HEMPEL_DD2
 
   USER_CHOOSES_LOW_RHO_BOUND = .true. ! true if user is to override table's low bound in r
   ! Choose low density bound different than table's intrinsic bound in r.
@@ -161,7 +161,7 @@ program driver
       ltmin = -2.0d0
       ltmax = 2.5d0
       ymin = tableymin
-      ymax = 0.65d0
+      ymax = 0.6499d0 ! the largest ye in the *h5 table is 0.65, but that makes rootfinding fail here
     end if
   else if (eos.eq.LS_220) then
     call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
@@ -183,7 +183,7 @@ program driver
       ltmin = -2d0
       ltmax = 2.5d0
       ymin = tableymin
-      ymax = 0.56d0
+      ymax = 0.5599d0 ! the largest ye in the *h5 table is 0.56, but that makes rootfinding fail here.
     end if
   else if (eos.eq.GSHEN_FSU21) then
     call readtable("GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5")
@@ -194,7 +194,7 @@ program driver
       ltmin = -2d0
       ltmax = 2.5d0
       ymin = tableymin
-      ymax = 0.56d0
+      ymax = 0.5599d0 ! the largest ye in the *h5 table is 0.56, but that makes rootfinding fail here.
     end if
   else if (eos.eq.HEMPEL_SFHO) then
     call readtable("Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5")
@@ -205,7 +205,7 @@ program driver
       ltmin = -2d0
       ltmax = 2.2d0
       ymin = tableymin
-      ymax = 0.6d0
+      ymax = 0.599d0 ! the largest ye in the *h5 table is 0.6, but that makes rootfinding fail here.
     end if
   else if (eos.eq.HEMPEL_SFHX) then
     call readtable("Hempel_SFHxEOS_rho234_temp180_ye60_version_1.1_20120817.h5")
@@ -216,7 +216,7 @@ program driver
       ltmin = -2d0
       ltmax = 2.2d0
       ymin = tableymin
-      ymax = 0.6d0
+      ymax = 0.599d0 ! the largest ye in the *h5 table is 0.6, but that makes rootfinding fail here.
     end if
   else if (eos.eq.HEMPEL_DD2) then
     call readtable("Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5")
@@ -227,7 +227,7 @@ program driver
       ltmin = -2d0
       ltmax = 2.2d0
       ymin = tableymin
-      ymax = 0.6d0
+      ymax = 0.599d0 ! the largest ye in the *h5 table is 0.6, but that makes rootfinding fail here.
     end if
   else
     write(*,"(A,I1,A)") 'Error, eos ', eos, ' is not recognized.'
