@@ -58,7 +58,7 @@ program driver
   integer i,j,k
   integer nr, nt, ny
   real*8 ltmax, ltmin, lymin, lymax, lrmin, lrmax
-  real*8 lrmin_for_user_chooses_low_rho_bound
+  real*8 lrmin_for_user_chooses_low_rho_bound, ltmin_for_user_chooses_low_temp_bound
   real*8 tmax, tmin, ymin, ymax, rmin, rmax, tminout, tmaxout
   real*8 xunit,tunit,munit,rhounit,punit,eomunit,c2unit
   real*8 GammaP, EoverRho
@@ -75,6 +75,7 @@ program driver
   integer HSHEN_2011,LS_220,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
   logical USER_CHOOSES_BOUNDS
   logical USER_CHOOSES_LOW_RHO_BOUND
+  logical USER_CHOOSES_LOW_TEMP_BOUND
 
   RTACC = 1.e-5
   keytemp = 1
@@ -116,8 +117,8 @@ program driver
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = BETAYE
-  eos = HEMPEL_DD2
+  eostype = COLD
+  eos = GSHEN_FSU21
 
   USER_CHOOSES_LOW_RHO_BOUND = .true. ! true if user is to override table's low bound in r
   ! Choose low density bound different than table's intrinsic bound in r.
@@ -127,6 +128,16 @@ program driver
   !   if USER_CHOOSES_LOW_RHO_BOUND then user must supply low density bound here
   !   if .not.USER_CHOOSES_LOW_RHO_BOUND then this is never used
   lrmin_for_user_chooses_low_rho_bound = 8d0
+
+  USER_CHOOSES_LOW_TEMP_BOUND = .false. ! true if user is to override table's low bound in t
+  ! Choose low temperature bound different than table's intrinsic bound in t.
+  !   This option is sometimes used rather than USER_CHOOSES_BOUNDS because we want to honor
+  !   the table's intrinsic bounds in all vars, except the minimum temp, where we may not trust
+  !   the lowest temperatures. This option is usually employed to make ColdTables by slicing
+  !   the 3D table at a higher temperature than minimum.
+  !   if USER_CHOOSES_LOW_TEMP_BOUND then user must supply low temperature bound here
+  !   if .not.USER_CHOOSES_LOW_RHO_BOUND then this is never used
+  ltmin_for_user_chooses_low_temp_bound = 0d0
 
   USER_CHOOSES_BOUNDS = .false. ! true if user is to override the table's bounds in r,t,y
   ! Choose bounds different than table's intrinsic bounds in r,t,y.
@@ -236,6 +247,11 @@ program driver
   ! reset lrmin to user-chosen bound if this option is used
   if (USER_CHOOSES_LOW_RHO_BOUND) then
      lrmin = lrmin_for_user_chooses_low_rho_bound
+  end if
+
+  ! reset ltmin to user-chosen bound if this option is used
+  if (USER_CHOOSES_LOW_TEMP_BOUND) then
+     ltmin = ltmin_for_user_chooses_low_temp_bound
   end if
 
   rmin = 10**lrmin
