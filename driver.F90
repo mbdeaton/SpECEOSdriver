@@ -342,7 +342,7 @@ program driver
   ! ***** Print Table ************************************************************************
   ! Here we print the input table used in a SpEC Hydro evolution.
   !   To be read in using the EquationOfState::Tabulated class.
-  !   For the standard tables -- FULL (3D), BETA (2D), COLD(1D) -- as of 3.5.12,
+  !   For the standard tables -- FULL (3D), BETA (2D), COLD(1D) -- as of May 2013,
   !   the output colums are:
   ! [1] epsilon, specific internal energy
   ! [2] gamma,   so that P=kappa*rho^gamma, where kappa is the constant defined above
@@ -353,29 +353,29 @@ program driver
   rho_at_hmin = rmin
   temp_at_hmin = tmin
   ye_at_hmin = ymin
+  ! T loop
   do i=0, nt-1
     if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
       xtemp = tmin
     else
-      !xtemp = tmin + i*(tmax-tmin)/nt
-      xtemp = 10**(ltmin + i*(ltmax-ltmin)/(nt-1))
+      !xtemp = tmin + i*(tmax-tmin)/nt             ! linear
+      xtemp = 10**(ltmin + i*(ltmax-ltmin)/(nt-1)) ! logarithmic
     end if
+    ! Ye loop
     do j=0, ny-1
-      !xye = 10**(lymin + j*(lymax-lymin)/(ny-1))
-      xye = ymin + j*(ymax-ymin)/(ny-1)
+      xye = ymin + j*(ymax-ymin)/(ny-1)	          ! linear
+      !xye = 10**(lymin + j*(lymax-lymin)/(ny-1)) ! logarithmic
+      ! rho loop
       do k=0, nr-1
-        xrho = 10**(lrmin + k*(lrmax-lrmin)/(nr-1))
-	!xrho  = 1.d-3*rhounit
-	!xtemp = 8.19408d0
-        !xtemp = 1.6d0
-	!xye   = 0.15d0
+        xrho = 10**(lrmin + k*(lrmax-lrmin)/(nr-1)) ! logarithmic
+
 	! set xye to satisfy beta_equil
         if((eostype.eq.BETA).or.(eostype.eq.COLD).or.(eostype.eq.COLDYE) &
 	.or.(eostype.eq.BETAYE)) then
           xye = rtnewt_findYe(mu_mismatch,ymin,ymax,RTACC,xrho,xtemp,tableymin)
         end if
 
-	! Extrapolate to T=0
+	! Extrapolate to T=0; (Note added 5.15.13: We don't do this anymore.)
 	!   WARNING: careful here, I've moved pieces of code around without thinking about
 	!   dependencies (Brett)
 	!if((eostype.eq.COLDYE).or(eostype.eq.COLD)) then
@@ -481,6 +481,11 @@ program driver
 end program driver
 
 ! ****************************************************************************************
+
+! Calculate mismatch of chemical potentials: fval=mu_n-mu_e-mu_p.
+! return values:           fval, fderiv
+! table abscissa:          xye, xrho, xtemp
+! table low bound in Ye:   tableymin
 SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin)
   !USE nrtype
   IMPLICIT NONE
@@ -494,7 +499,7 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin)
   keytemp = 1
   keyerr  = 0
 
-  !write(*,*) "1finding chemical potentials ",xye,xrho,xtemp
+  ! lookup chemical potentials
   call nuc_eos_full(xrho,xtemp,xye,xenr,xprs,xent,xcs2,xdedt,&
        xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
        xmuhat,keytemp,keyerr)
@@ -518,13 +523,19 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin)
 
   fderiv = (f_p - f_m)/(2.d0*EPS)
 
-  ! keep next guess within ye-bounds
+  ! keep next guess within ye-bounds, by adjusting the derivative at the boundaries
   deriv_crit = 1.01d0*fval/(xye-tableymin)
   if(abs(fderiv).lt.abs(deriv_crit)) then
     fderiv = deriv_crit
   end if
 END SUBROUTINE mu_mismatch
 
+! Newton-Raphson root finding for mu_mismatch function
+! function to search for root:    funcd
+! table abscissa:                 xrho, xtemp
+! table bounds in Ye:             x1, x2
+! table low bound in Ye:          tableymin (only used to pass to mu_mismatch)
+! requested mu_mismatch accuracy: xacc
 FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin)
   !USE nrtype; USE nrutil, ONLY : nrerror
   IMPLICIT NONE
@@ -595,6 +606,7 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin)
         write(*,*) "rtnewt_findYe exceeded maximum iterations"
 END FUNCTION rtnewt_findYe
 
+
 SUBROUTINE ent_mismatch(xtemp,fval,fderiv,xrho,xye,xentGoal)
   !USE nrtype
   IMPLICIT NONE
@@ -636,7 +648,8 @@ SUBROUTINE ent_mismatch(xtemp,fval,fderiv,xrho,xye,xentGoal)
   end if
 END SUBROUTINE ent_mismatch
 
-	FUNCTION rtnewt_findtheta(funcd,x1,x2,xacc,xrho,xye,xent)
+! Newton-Raphson root find over the Theta function
+FUNCTION rtnewt_findtheta(funcd,x1,x2,xacc,xrho,xye,xent)
 	!USE nrtype; USE nrutil, ONLY : nrerror
 	IMPLICIT NONE
 	REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xye,xent
@@ -701,4 +714,4 @@ END SUBROUTINE ent_mismatch
 !	end do
 	!call nrerror('rtnewt_findtheta exceeded maximum iterations')
         write(*,*) "rtnewt_findtheta exceeded maximum iterations"
-	END FUNCTION rtnewt_findtheta
+END FUNCTION rtnewt_findtheta
