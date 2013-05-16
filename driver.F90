@@ -48,6 +48,7 @@ program driver
 
   real*8 xrho,xye,xtemp,tableymin
   real*8 xenr,xprs,xent,xcs2,xdedt,xmunu
+  real*8 xmu_mismatch,dxmu_mismatch
   real*8 xdpderho,xdpdrhoe
   integer keytemp,keyerr
 
@@ -71,7 +72,7 @@ program driver
   real*8 xprs_yp,xent_yp,dPdT,dsdT,dPdY,dsdY,dPdYs,dPds
   real*8 hmin,cs
   real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin
-  integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,BETAYE,eostype
+  integer FULL,BETA,COLD,MICRO,DERIVS,MUX,COLDYE,BETAYE,COLDMU,eostype
   integer HSHEN_2011,LS_220,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
   logical USER_CHOOSES_BOUNDS
   logical USER_CHOOSES_LOW_RHO_BOUND
@@ -105,7 +106,9 @@ program driver
   ! Tables of other thermodynamic potentials
   MICRO = 6    ! microphysical potentials in 3D table
   MUX = 7      ! chemical potentials in 3D table
-  DERIVS = 8   ! thermodynamic derivs in 3D table (for testing)
+  ! Testing Tables
+  DERIVS = 8   ! thermodynamic derivs in 3D table
+  COLDMU = 9   ! mu_mismatch in 1D table (varying Ye) to examine monotonicity of e,p,n potentials
 
   ! Define versions of tables:
   HSHEN_2011 = 1   ! HShenEOS_rho220_temp180_ye65_version_1.1_20120817.h5
@@ -117,7 +120,7 @@ program driver
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = COLD
+  eostype = COLDMU
   eos = GSHEN_FSU21
 
   USER_CHOOSES_LOW_RHO_BOUND = .true. ! true if user is to override table's low bound in r
@@ -156,11 +159,16 @@ program driver
     write(*,"(A,I1,A)") 'Error, user has specified a lower rho bound twice.'
   end if
 
+  if (USER_CHOOSES_BOUNDS.and.USER_CHOOSES_LOW_TEMP_BOUND) then
+    write(*,"(A,I1,A)") 'Error, user has specified a lower temp bound twice.'
+  end if
+
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  !nr = 2000
+  !nr = 2000 ! use higher resolution for cold tables
   nr = 250
   nt = 120
-  ny = 100
+  !ny = 100
+  ny = 2000 ! use higher resolution for COLDMU table
 
   ! ***** reset table limits and resolution *****************************************************
   if (eos.eq.HSHEN_2011) then
@@ -266,6 +274,10 @@ program driver
      nt = 1
      ny = 1
   end if
+  if((eostype.eq.COLDMU)) then
+     nt = 1
+     nr = 1
+  end if
   if((eostype.eq.BETA).or.(eostype.eq.BETAYE)) then
      ny = 1
   end if
@@ -292,23 +304,35 @@ program driver
   else if(eostype.eq.BETAYE) then
     write(*,"(A)") "# 2D beta-equilibrium table"
     write(*,"(A)") "EoSType = HotBetaYe"
+  else if(eostype.eq.COLDMU) then
+    write(*,"(A)") "# 1D (varying Ye) table of mu_n-mu_p-mu_e"
+    write(*,"(A,E15.6)") "# T   = ",tmin
+    write(*,"(A,E15.6)") "# rho = ",rmin/rhounit
+    write(*,"(A)") "# [1] rho"
+    write(*,"(A)") "# [2] mu=mu_n-mu_p-mu_e"
+    write(*,"(A)") "# [3] dmu/dYe"
+    write(*,"(A)") "EoSType = MuMismatch"
   else
     write(*,"(A,I1,A)") 'Error, eostype ', eostype, ' is not recognized.'    
   end if
 
   if(eostype.eq.COLDYE) then
     write(*,"(A,I6)") "Nrho =",nr
+  else if(eostype.eq.COLDMU) then
+    write(*,"(A,I6)") "Nye = ",ny
   else if(eostype.eq.BETAYE) then
     write(*,"(A,I6,A,A,I6)") "Nrho =",nr,"     ","NT =",nt
   else  
     write(*,"(A,I6,A,A,I6,A,A,I6)") "Nrho =",nr,"     ","Nye =",ny,"     ","NT =",nt
   end if
 
-  write(*,"(A, E15.6, A, A, E15.6)") "RhoMin =",rmin/rhounit,"      ",&
-        "RhoMax =",rmax/rhounit
+  if(eostype.ne.COLDMU) then
+    write(*,"(A, E15.6, A, A, E15.6)") "RhoMin =",rmin/rhounit,"      ",&
+          "RhoMax =",rmax/rhounit
+  end if
 
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.DERIVS) &
-    .or.(eostype.eq.MUX)) then
+    .or.(eostype.eq.MUX).or.(eostype.eq.COLDMU)) then
     write(*,"(A, E15.6, A, A, E15.6)") "YeMin =",ymin,"      ",&
       "YeMax =",ymax
   end if
@@ -319,19 +343,21 @@ program driver
       "Tmax =",tmax
   end if
 
-  kappa = 100.d0    ! for our output of gamma s.t. pressure=kappa*rho^gamma
-  HeatCapacity = 1.6d-3
-  GammaTh = 5.d0/3.d0
+  kappa = 100.d0        ! for our output of gamma s.t. pressure=kappa*rho^gamma
+  HeatCapacity = 1.6d-3 ! currently used as an extrapolation parameter
+  GammaTh = 5.d0/3.d0   ! same ^
   gtfac = (GammaTh-1.d0)/GammaTh
   if((eostype.ne.MICRO).and.(eostype.ne.DERIVS).and.(eostype.ne.MUX) &
-	.and.(eostype.ne.COLDYE).and.(eostype.ne.BETAYE)) then
+	.and.(eostype.ne.COLDYE).and.(eostype.ne.BETAYE).and.(eostype.ne.COLDMU)) then
     write(*,"(A, E15.6)") "HeatCapacity =",HeatCapacity,&
       "GammaTh =",GammaTh,&
       "Kappa =",kappa
   end if
-  write(*,"(A)") "RhoSpacing = Log"
+  if(eostype.ne.COLDMU) then
+    write(*,"(A)") "RhoSpacing = Log"
+  end if
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.DERIVS) &
-	.or.(eostype.eq.MUX)) then
+	.or.(eostype.eq.MUX).or.(eostype.eq.COLDMU)) then
     write(*,"(A)") "YeSpacing = Linear"
   end if
   if((eostype.eq.MICRO).or.(eostype.eq.FULL).or.(eostype.eq.BETA) &
@@ -355,7 +381,7 @@ program driver
   ye_at_hmin = ymin
   ! T loop
   do i=0, nt-1
-    if((eostype.eq.COLD).or.(eostype.eq.COLDYE)) then
+    if((eostype.eq.COLD).or.(eostype.eq.COLDYE).or.(eostype.eq.COLDMU)) then
       xtemp = tmin
     else
       !xtemp = tmin + i*(tmax-tmin)/nt             ! linear
@@ -367,7 +393,11 @@ program driver
       !xye = 10**(lymin + j*(lymax-lymin)/(ny-1)) ! logarithmic
       ! rho loop
       do k=0, nr-1
-        xrho = 10**(lrmin + k*(lrmax-lrmin)/(nr-1)) ! logarithmic
+        if(eostype.eq.COLDMU) then
+	  xrho = rmin
+	else
+          xrho = 10**(lrmin + k*(lrmax-lrmin)/(nr-1)) ! logarithmic
+	end if
 
 	! set xye to satisfy beta_equil
         if((eostype.eq.BETA).or.(eostype.eq.COLD).or.(eostype.eq.COLDYE) &
@@ -405,7 +435,12 @@ program driver
 	    xrhothet,xye,xent)
         end if
 
-	if(eostype.eq.DERIVS) then	
+        ! find the mismatch in e,p,n chemical potentials for COLDMU table
+	if(eostype.eq.COLDMU) then
+          call mu_mismatch(xye,xmu_mismatch,dxmu_mismatch,xrho,xtemp,tableymin)
+	end if
+
+	if(eostype.eq.DERIVS) then
 	  pgam = xcs2*xrho
 	  delta_t = xtemp*0.01
 	  delta_y = xye*0.01
@@ -457,6 +492,8 @@ program driver
 	  write(*,"(1P10E15.6)") xmu_e,xmu_p-xmu_n,xxn,xxp,xxh,xabar,xzbar
 	else if(eostype.eq.DERIVS) then
 	  write(*,"(1P10E15.6)") pgam,dPds,dPdY,xent
+	else if(eostype.eq.COLDMU) then
+	  write(*,"(1P10E15.6)") xye, xmu_mismatch, dxmu_mismatch
 	else if(eostype.eq.COLDYE) then
 	  write(*,"(1P10E15.6)") xrho, xye
 	else if(eostype.eq.BETAYE) then
