@@ -4,18 +4,18 @@ program driver
   implicit none
 
   interface
-	FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p)
+	FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 	!USE nrtype; USE nrutil, ONLY : nrerror
 	IMPLICIT NONE
 	REAL*8, INTENT(IN) :: x1,x2,xacc,xrho,xtemp,tableymin
-	LOGICAL, INTENT(IN) :: monotonize_mu_p
+	LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
 	REAL*8 :: rtnewt_findYe
 	INTERFACE
-		SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
+		SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 		!USE nrtype
 		IMPLICIT NONE
 		REAL*8, INTENT(IN)  :: x,xrho,xtemp,tableymin
-		LOGICAL, INTENT(IN) :: monotonize_mu_p
+		LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
 		REAL*8, INTENT(OUT) :: fval,fderiv
 		END SUBROUTINE funcd
 	END INTERFACE
@@ -34,11 +34,11 @@ program driver
 		END SUBROUTINE funcd
 	END INTERFACE
 	END FUNCTION rtnewt_findtheta
-	SUBROUTINE mu_mismatch(x,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
+	SUBROUTINE mu_mismatch(x,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 	!USE nrtype
 	IMPLICIT NONE
 	REAL*8, INTENT(IN)  :: x,xrho,xtemp,tableymin
-	LOGICAL, INTENT(IN) :: monotonize_mu_p
+	LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
 	REAL*8, INTENT(OUT) :: fval,fderiv
 	END SUBROUTINE mu_mismatch
 	SUBROUTINE ent_mismatch(x,fval,fderiv,xrho,xye,xentGoal)
@@ -52,6 +52,11 @@ program driver
 	REAL*8, INTENT(IN)  :: xrho,xtemp,xye,tableymin,max_monotonized_ye
 	REAL*8, INTENT(OUT) :: xmu_p
 	END SUBROUTINE monotonized_xmu_p
+	SUBROUTINE monotonized_xmu_n(xmu_n,xrho,xtemp,xye,tableymin,max_monotonized_ye)
+	IMPLICIT NONE
+	REAL*8, INTENT(IN)  :: xrho,xtemp,xye,tableymin,max_monotonized_ye
+	REAL*8, INTENT(OUT) :: xmu_n
+	END SUBROUTINE monotonized_xmu_n
   end interface
 
   real*8 xrho,xye,xtemp,tableymin
@@ -86,6 +91,7 @@ program driver
   logical USER_CHOOSES_LOW_RHO_BOUND
   logical USER_CHOOSES_LOW_TEMP_BOUND
   logical MONOTONIZE_MU_P
+  logical MONOTONIZE_MU_N
 
   RTACC = 1.e-5
   keytemp = 1
@@ -129,13 +135,16 @@ program driver
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = COLDYE
+  eostype = COLD
   eos = GSHEN_FSU21
 
-  ! Monotonize the proton chemical potential? Necessary for nonsmooth GShen tables.
+  ! Monotonize the proton and/or neutron chemical potential? Necessary for nonsmooth GShen tables.
   ! False if we want to use the chemical potential for p directly from the table.
-  ! True is more computationally expensive, and also manipulates the tabulated mu_p.
+  ! True is more computationally expensive, and also manipulates the tabulated mu_p and/or mu_n.
+  ! I find that mu_p is the major problematic variable, and additionally monotonizing mu_n doesn't
+  ! add much, except occasionally in the high-Ye region.
   MONOTONIZE_MU_P = .true.
+  MONOTONIZE_MU_N = .false.
 
   USER_CHOOSES_LOW_RHO_BOUND = .false. ! true if user is to override table's low bound in r
   ! Choose low density bound different than table's intrinsic bound in r.
@@ -144,9 +153,9 @@ program driver
   !   these lowest densities because we apply atmosphere treatment near rho=1e-10.
   !   if USER_CHOOSES_LOW_RHO_BOUND then user must supply low density bound here
   !   if .not.USER_CHOOSES_LOW_RHO_BOUND then this is never used
-  lrmin_for_user_chooses_low_rho_bound = 11d0
+  lrmin_for_user_chooses_low_rho_bound = 8d0
 
-  USER_CHOOSES_LOW_TEMP_BOUND = .false. ! true if user is to override table's low bound in t
+  USER_CHOOSES_LOW_TEMP_BOUND = .true. ! true if user is to override table's low bound in t
   ! Choose low temperature bound different than table's intrinsic bound in t.
   !   This option is sometimes used rather than USER_CHOOSES_BOUNDS because we want to honor
   !   the table's intrinsic bounds in all vars, except the minimum temp, where we may not trust
@@ -154,7 +163,7 @@ program driver
   !   the 3D table at a higher temperature than minimum.
   !   if USER_CHOOSES_LOW_TEMP_BOUND then user must supply low temperature bound here
   !   if .not.USER_CHOOSES_LOW_RHO_BOUND then this is never used
-  ltmin_for_user_chooses_low_temp_bound = 0d0
+  ltmin_for_user_chooses_low_temp_bound = -0.7d0
 
   USER_CHOOSES_BOUNDS = .false. ! true if user is to override the table's bounds in r,t,y
   ! Choose bounds different than table's intrinsic bounds in r,t,y.
@@ -178,11 +187,11 @@ program driver
   end if
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  !nr = 2000 ! use higher resolution for cold tables
-  nr = 250
+  nr = 2000 ! use higher resolution for cold tables
+  !nr = 250
   nt = 120
-  !ny = 100
-  ny = 2000 ! use higher resolution for COLDMU table
+  ny = 100
+  !ny = 2000 ! use higher resolution for COLDMU table
 
   ! ***** reset table limits and resolution *****************************************************
   if (eos.eq.HSHEN_2011) then
@@ -308,6 +317,9 @@ program driver
     if (MONOTONIZE_MU_P) then
       write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_p(Ye) relation"
     end if
+    if (MONOTONIZE_MU_N) then
+      write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_n(Ye) relation"
+    end if
     write(*,"(A)") "EoSType = Tabulated"
   else if(eostype.eq.FULL) then
     write(*,"(A)") "# Full 3D table"
@@ -322,6 +334,9 @@ program driver
     if (MONOTONIZE_MU_P) then
       write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_p(Ye) relation"
     end if
+    if (MONOTONIZE_MU_N) then
+      write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_n(Ye) relation"
+    end if
     write(*,"(A,E15.6)") "# T = ", tmin
     write(*,"(A)") "EoSType = ColdBetaYe"
   else if(eostype.eq.BETAYE) then
@@ -329,11 +344,17 @@ program driver
     if (MONOTONIZE_MU_P) then
       write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_p(Ye) relation"
     end if
+    if (MONOTONIZE_MU_N) then
+      write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_n(Ye) relation"
+    end if
     write(*,"(A)") "EoSType = HotBetaYe"
   else if(eostype.eq.COLDMU) then
     write(*,"(A)") "# 1D (varying Ye) table of mu_n-mu_p-mu_e"
     if (MONOTONIZE_MU_P) then
       write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_p(Ye) relation"
+    end if
+    if (MONOTONIZE_MU_N) then
+      write(*,"(A)") "# beta equilibrium Ye-curve smoothed by artificially enforcing monotonic mu_n(Ye) relation"
     end if
     write(*,"(A,E15.6)") "# T   = ",tmin
     write(*,"(A,E15.6)") "# rho = ",rmin/rhounit
@@ -431,7 +452,7 @@ program driver
 	! set xye to satisfy beta_equil
         if((eostype.eq.BETA).or.(eostype.eq.COLD).or.(eostype.eq.COLDYE) &
 	.or.(eostype.eq.BETAYE)) then
-          xye = rtnewt_findYe(mu_mismatch,ymin,ymax,RTACC,xrho,xtemp,tableymin,MONOTONIZE_MU_P)
+          xye = rtnewt_findYe(mu_mismatch,ymin,ymax,RTACC,xrho,xtemp,tableymin,MONOTONIZE_MU_P,MONOTONIZE_MU_N)
         end if
 
 	! Extrapolate to T=0; (Note added 5.15.13: We don't do this anymore.)
@@ -466,7 +487,7 @@ program driver
 
         ! find the mismatch in e,p,n chemical potentials for COLDMU table
 	if(eostype.eq.COLDMU) then
-          call mu_mismatch(xye,xmu_mismatch,dxmu_mismatch,xrho,xtemp,tableymin,MONOTONIZE_MU_P)
+          call mu_mismatch(xye,xmu_mismatch,dxmu_mismatch,xrho,xtemp,tableymin,MONOTONIZE_MU_P,MONOTONIZE_MU_N)
 	end if
 
 	if(eostype.eq.DERIVS) then
@@ -593,7 +614,7 @@ SUBROUTINE monotonized_xmu_p(xmu_p,xrho,xtemp,xye,tableymin,max_monotonized_ye)
       xye_j = max_monotonized_ye - j*(max_monotonized_ye-tableymin)/(ny-1)
       call nuc_eos_full(xrho,xtemp,xye_j+1d-12,xenr,xprs,xent,xcs2,xdedt,&
         xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p_temp,&
-        xmuhat,keytemp,keyerr)
+        xmuhat,keytemp,keyerr) ! add a little eps to xye_j so we don't go below tableymin
 
       ! enforce monotonic decrease in xmu_p_j
       if (xmu_p_temp<xmu_p_j) then
@@ -602,7 +623,7 @@ SUBROUTINE monotonized_xmu_p(xmu_p,xrho,xtemp,xye,tableymin,max_monotonized_ye)
 
       if (xye_j<xye) exit ! exit now, because we have the points that are bracketing xye
 
-      ! if xye_temp>xye, then shift the value in xmu_p_j to xmu_p_jj, (and same for ye) and continue loop
+      ! if xye_j>xye, then shift the value in xmu_p_j to xmu_p_jj, (and same for ye) and continue loop
       xmu_p_jj = xmu_p_j
       xye_jj = xye_j
     end do
@@ -622,16 +643,90 @@ END SUBROUTINE monotonized_xmu_p
 
 ! ****************************************************************************************
 
+! Calculate a monotonic version of the mu_n curve.
+! In some EOSs (notably GShenNL3 and GShenFSU21) the mu_n curve at a given rho,Temp
+! is nonmonotonic in Ye, giving us poor root-solves with the newton-raphson method.
+! We resolve this by scanning the mu_n(Ye) curve at each point in rho,Temp, from high Ye
+! to low; we keep mu_n constant if the tabulated value is nonmonotonic, otherwise, we use
+! the tabulated value.
+! Since we only have to do this to a few tables, this is coded up *incredibly*
+! inefficiently: for each root solve call at the same rho,Temp we recalculate the entire
+! mu_n(Ye) curve. We only bother to do this at low-ish electron fractions,
+! where the root-solver spends most of its iterations.
+! return value:              xmu_n
+! table abscissa:            xye,xrho,xtemp
+! table low bound in Ye:     tableymin
+! highest Ye to monotonize:  max_monotonized_ye
+SUBROUTINE monotonized_xmu_n(xmu_n,xrho,xtemp,xye,tableymin,max_monotonized_ye)
+  IMPLICIT NONE
+  REAL*8, INTENT(IN)  :: xrho,xtemp,xye,tableymin,max_monotonized_ye
+  REAL*8, INTENT(OUT) :: xmu_n
+  real*8 :: xenr,xprs,xent,xcs2,xdedt,xdpderho,xdpdrhoe
+  real*8 :: xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_p,xmuhat
+  integer keytemp,keyerr
+  real*8 :: xye_j,xye_jj                  ! j is the lower point at (j), jj is the upper point at (j+1)
+  real*8 :: xmu_n_j,xmu_n_jj,xmu_n_temp   ! xmu_n_temp is our 'peak ahead' variable
+  real*8 :: slope                         ! slope of mu_n,ye curve for linear interpolation
+  integer ny, j
+  keytemp = 1
+  keyerr = 0
+
+  if(xye<max_monotonized_ye) then
+    ! Calculate the monotonized curve
+    ! Since most input EOS tables have about 50 points in Ye between 0 and 0.5, we'll make
+    ! a grid of 50 points between tableymin and max_monotonized_ye.
+    ! From this grid, we'll find the points that bound xye, and linearly interpolate.
+    ny=50
+    ! set mu_n and ye for upper point
+    xye_jj = max_monotonized_ye
+    call nuc_eos_full(xrho,xtemp,xye_jj,xenr,xprs,xent,xcs2,xdedt,&
+      xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n_jj,xmu_p,&
+      xmuhat,keytemp,keyerr)
+    xmu_n_j = xmu_n_jj ! initialize the mu_n(ye) slope to zero
+    ! start the loop at the penultimate point
+    do j=1, ny
+      xye_j = max_monotonized_ye - j*(max_monotonized_ye-tableymin)/(ny-1)
+      call nuc_eos_full(xrho,xtemp,xye_j+1d-12,xenr,xprs,xent,xcs2,xdedt,&
+        xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n_temp,xmu_p,&
+        xmuhat,keytemp,keyerr) ! add a little eps to xye_j so we don't go below tableymin
+
+      ! enforce monotonic increase in xmu_n_j
+      if (xmu_n_temp>xmu_n_j) then
+        xmu_n_j = xmu_n_temp
+      end if
+
+      if (xye_j<xye) exit ! exit now, because we have the points that are bracketing xye
+
+      ! if xye_j>xye, then shift the value in xmu_n_j to xmu_n_jj, (and same for ye) and continue loop
+      xmu_n_jj = xmu_n_j
+      xye_jj = xye_j
+    end do
+
+    ! interpolate to xye between xmu_n_j and xmu_n_jj
+    slope = (xmu_n_jj-xmu_n_j) / (xye_jj-xye_j)
+    xmu_n = slope*(xye-xye_j) + xmu_n_j
+
+  else
+    ! if xye>max_monotonized_ye, just use the raw table value
+    call nuc_eos_full(xrho,xtemp,xye,xenr,xprs,xent,xcs2,xdedt,&
+      xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
+      xmuhat,keytemp,keyerr)
+  end if
+
+END SUBROUTINE monotonized_xmu_n
+
+! ****************************************************************************************
+
 ! Calculate mismatch of chemical potentials: fval=mu_n-mu_e-mu_p.
 ! return values:           fval, fderiv
 ! table abscissa:          xye, xrho, xtemp
 ! table low bound in Ye:   tableymin
-! switch to care for mu_p: monotonize_mu_p
-SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
+! switch to care for mu_p: monotonize_mu_p,monotonize_mu_n
+SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
   !USE nrtype
   IMPLICIT NONE
   REAL*8, INTENT(IN)  :: xye,xrho,xtemp,tableymin
-  LOGICAL, INTENT(IN) :: monotonize_mu_p
+  LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
   REAL*8, INTENT(OUT) :: fval,fderiv
   real*8 :: xenr,xprs,xent,xcs2,xdedt,xdpderho,xdpdrhoe
   real*8 :: xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,xmuhat
@@ -646,9 +741,12 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
        xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
        xmuhat,keytemp,keyerr)
   ! get the monotonized mu_p if that option flagged
-  max_monotonized_ye=0.51d0
+  max_monotonized_ye=0.52d0
   if(monotonize_mu_p) then
     call monotonized_xmu_p(xmu_p,xrho,xtemp,xye,tableymin,max_monotonized_ye)
+  end if
+  if(monotonize_mu_n) then
+    call monotonized_xmu_n(xmu_n,xrho,xtemp,xye,tableymin,max_monotonized_ye)
   end if
   fval = xmu_n - xmu_p - xmu_e
   !write(*,*) "fval=", fval," n=",xmu_n,", p=", xmu_p,", e=",xmu_e
@@ -662,6 +760,9 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
   if(monotonize_mu_p) then
     call monotonized_xmu_p(xmu_p,xrho,xtemp,xye,tableymin,max_monotonized_ye)
   end if
+  if(monotonize_mu_n) then
+    call monotonized_xmu_n(xmu_n,xrho,xtemp,xye,tableymin,max_monotonized_ye)
+  end if
   f_m = xmu_n - xmu_p - xmu_e
 
   ! set upper values for symmetric deriv
@@ -671,6 +772,9 @@ SUBROUTINE mu_mismatch(xye,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
        xmuhat,keytemp,keyerr)
   if(monotonize_mu_p) then
     call monotonized_xmu_p(xmu_p,xrho,xtemp,xye,tableymin,max_monotonized_ye)
+  end if
+  if(monotonize_mu_n) then
+    call monotonized_xmu_n(xmu_n,xrho,xtemp,xye,tableymin,max_monotonized_ye)
   end if
   f_p = xmu_n - xmu_p - xmu_e
 
@@ -689,19 +793,19 @@ END SUBROUTINE mu_mismatch
 ! table bounds in Ye:             x1, x2
 ! table low bound in Ye:          tableymin (only used to pass to mu_mismatch)
 ! requested mu_mismatch accuracy: xacc
-! switch to care for mu_p:        monotonize_mu_p
-FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p)
+! switch to care for mu_p,mu_n:   monotonize_mu_p, monotonize_mu_n
+FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
   !USE nrtype; USE nrutil, ONLY : nrerror
   IMPLICIT NONE
   REAL*8, INTENT(IN)  :: x1,x2,xacc,xrho,xtemp,tableymin
-  LOGICAL, INTENT(IN) :: monotonize_mu_p
+  LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
   REAL*8 :: rtnewt_findYe
   INTERFACE
-	SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p)
+	SUBROUTINE funcd(x,fval,fderiv,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 	  !USE nrtype
 	  IMPLICIT NONE
 	  REAL*8, INTENT(IN) :: x,xrho,xtemp,tableymin
-	  LOGICAL, INTENT(IN) :: monotonize_mu_p
+	  LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
 	  REAL*8, INTENT(OUT) :: fval,fderiv
 	END SUBROUTINE funcd
   END INTERFACE
@@ -709,7 +813,7 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p)
   INTEGER :: j
   REAL*8 :: df,dx,f,fl,fh,dfl,dfh, xl,xh
   !rtnewt_findYe=0.5d0*(x1+x2)
-  !call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin,monotonize_mu_p)
+  !call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
   if(x1<x2) then
     xl = x1
     xh = x2
@@ -717,8 +821,8 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p)
     xl = x2
     xh = x1
   end if
-  call funcd(xl,fl,dfl,xrho,xtemp,tableymin,monotonize_mu_p)
-  call funcd(xh,fh,dfh,xrho,xtemp,tableymin,monotonize_mu_p)
+  call funcd(xl,fl,dfl,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
+  call funcd(xh,fh,dfh,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 
   !write(*,*) "fl=",fl,"fh=",fh
 
@@ -737,7 +841,7 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p)
 	else 
 	  rtnewt_findYe=0.5d0*(xl+xh)
 	  do j=1,MAXIT
-	    call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin,monotonize_mu_p)
+	    call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 	    if(abs(f)<xacc) RETURN
 	    if(f*fl<0.d0) then
 		xh = rtnewt_findYe
@@ -750,7 +854,7 @@ FUNCTION rtnewt_findYe(funcd,x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p)
 	  end do
 	end if
 !	do j=1,MAXIT
-!		call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin,monotonize_mu_p)
+!		call funcd(rtnewt_findYe,f,df,xrho,xtemp,tableymin,monotonize_mu_p,monotonize_mu_n)
 !		dx=f/df
 !		rtnewt_findYe=rtnewt_findYe-dx
 !		if ((x1-rtnewt_findYe)*(rtnewt_findYe-x2) < 0.0)&
