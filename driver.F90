@@ -103,13 +103,13 @@ program driver
   HSHEN_2011 = 1   ! HShenEOS_rho220_temp180_ye65_version_1.1_20120817.h5
   LS_220 = 2       ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
   GSHEN_NL3 = 3    ! GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5
-  GSHEN_FSU21 = 4  ! GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5
+  GSHEN_FSU21 = 4  ! GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20130522.h5
   HEMPEL_SFHO = 5  ! Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5
   HEMPEL_SFHX = 6  ! Hempel_SFHxEOS_rho234_temp180_ye60_version_1.1_20120817.h5
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = WARM
+  eostype = COLD
   eos = GSHEN_FSU21
 
   ! Choose the ratio of thermal pressure to total pressure to hold constant for WARM style tables.
@@ -166,8 +166,8 @@ program driver
   end if
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  nr = 2000 ! use higher resolution for cold tables
-  !nr = 250
+  !nr = 2000 ! use higher resolution for cold tables
+  nr = 250
   nt = 120
   ny = 100
   !ny = 2000 ! use higher resolution for COLDMU table
@@ -207,7 +207,7 @@ program driver
       ymax = 0.5599d0 ! the largest ye in the *h5 table is 0.56, but that makes rootfinding fail here.
     end if
   else if (eos.eq.GSHEN_FSU21) then
-    call readtable("GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5")
+    call readtable("GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20130522.h5")
     tableymin = 0.05d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
