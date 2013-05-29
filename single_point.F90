@@ -43,15 +43,16 @@ program driver
     xtemp  = 1.6629d0
     xye    = 7.248d-2
 
-!   write(*,*) "rhounit=",rhounit
+    write(*,*) "rhounit=",rhounit
 
-    call readtable("LS220_450r_270t_50y_062211.h5")
+    call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
 
         call nuc_eos_full(xrho,xtemp,xye,xenr,xprs,xent,xcs2,xdedt,&
           xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
           xmuhat,keytemp,keyerr)
 
-!   write(*,*) "eta_e=",xmu_e/xtemp
+    write(*,*) "p(cgs)=",xprs
+    write(*,*) "eta_e=",xmu_e/xtemp
     write(*,*) "ent=",xent*9.56565348d17/eomunit
 
 end program driver
