@@ -11,7 +11,9 @@ This EOSdriver is an edited version of Evan O'Connor and Christian
 ***** Compiling *****
 System requirements are a Fortran90 compiler and the HDF5 libraries
 with Fortran90 module files and bindings. The latter can be gotten on
-    a Mac OS with 'brew install hdf5 --enable-fortran'.
+    a Mac OS with 'brew install hdf5 --enable-fortran'. (Note: you
+    cannot compile hdf5 with fortran bindings AND make the hdf5
+    libraries threadsafe with --enable-threadsafe simultaneously.)
 Make symbolic links to the appropriate Makefile and make.inc in
     MakefileRules/. e.g.:
 $ cd SpECEOSdriver
