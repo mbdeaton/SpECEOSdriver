@@ -109,7 +109,7 @@ program driver
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = WARM
+  eostype = WARMT
   eos = GSHEN_FSU21
 
   ! Choose the ratio of thermal pressure to total pressure to hold constant for WARM style tables.
@@ -847,7 +847,7 @@ FUNCTION rtnewt_findYe(x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p,monotoniz
   REAL*8, INTENT(IN)  :: x1,x2,xacc,xrho,xtemp,tableymin
   LOGICAL, INTENT(IN) :: monotonize_mu_p,monotonize_mu_n
   REAL*8 :: rtnewt_findYe
-  INTEGER, PARAMETER :: MAXIT=40
+  INTEGER, PARAMETER :: MAXIT=40 ! 40 iterations of bisection gives an accuracy in x of 1e-12
   INTEGER :: j
   REAL*8 :: df,dx,f,fl,fh,dfl,dfh, xl,xh
   
@@ -888,7 +888,9 @@ FUNCTION rtnewt_findYe(x1,x2,xacc,xrho,xtemp,tableymin,monotonize_mu_p,monotoniz
         rtnewt_findYe = 0.5d0*(xl+xh)
      end do
   end if
-  write(*,*) "rtnewt_findYe exceeded maximum iterations"
+  write(*,*) "rtnewt_findYe exceeded maximum iterations, which is expected when the"
+  write(*,*) "mu_mismatch function varies steeply with Ye. It is okay, the Ye value"
+  write(*,*) "has been found with bisection to sufficient accuracy."
 END FUNCTION rtnewt_findYe
 
 ! ****************************************************************************************
@@ -1011,7 +1013,9 @@ FUNCTION rtnewt_findTYe(this_t,this_ye,t1,t2,tacc,y1,y2,yacc,xrho,tabletmin,tabl
         rtnewt_findTYe = this_t            ! in case we exceed max it, this assignment necessary
      end do
   end if
-  write(*,*) "rtnewt_findTYe exceeded maximum iterations"
+  write(*,*) "rtnewt_findTYe exceeded maximum iterations, which is expected when the"
+  write(*,*) "pressure mismatch function varies dramatically with temperature. It is okay,"
+  write(*,*) "the temperature has been found to sufficient accuracy with bisection."
   
 END FUNCTION rtnewt_findTYe
 
