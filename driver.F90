@@ -14,6 +14,8 @@ program driver
   use eosmodule
   implicit none
 
+  real*8 googol
+
   real*8 rtnewt_findYe
   real*8 rtnewt_findTYe
   real*8 rtnewt_findtheta
@@ -53,6 +55,9 @@ program driver
   logical USER_CHOOSES_LOW_TEMP_BOUND
   logical MONOTONIZE_MU_P
   logical MONOTONIZE_MU_N
+
+  ! for safety checks on infinities
+  googol=1.d100
 
   RTACC = 1.e-5      ! Relative accuracy for root of f(x). We use this in x and f both.
   keytemp = 1
@@ -109,8 +114,8 @@ program driver
   HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = WARMT
-  eos = GSHEN_FSU21
+  eostype = FULL
+  eos = LS_220
 
   ! Choose the ratio of thermal pressure to total pressure to hold constant for WARM style tables.
   ! NOTE: if (eostype.ne.WARM).and.(eostype.ne.WARMYE).and.(eostype.ne.WARMT) then this parameter
@@ -122,17 +127,17 @@ program driver
   ! True is more computationally expensive, and also manipulates the tabulated mu_p and/or mu_n.
   ! I find that mu_p is the major problematic variable, and additionally monotonizing mu_n doesn't
   ! add much, except occasionally in the high-Ye region.
-  MONOTONIZE_MU_P = .true.
+  MONOTONIZE_MU_P = .false.
   MONOTONIZE_MU_N = .false.
 
-  USER_CHOOSES_LOW_RHO_BOUND = .false. ! true if user is to override table's low bound in r
+  USER_CHOOSES_LOW_RHO_BOUND = .true. ! true if user is to override table's low bound in r
   ! Choose low density bound different than table's intrinsic bound in r.
   !   This option is often used rather than USER_CHOOSES_BOUNDS because we want to honor
   !   the table's intrinsic bounds in all vars, except the minimum rho, where we do not need
   !   these lowest densities because we apply atmosphere treatment near rho=1e-10.
   !   if USER_CHOOSES_LOW_RHO_BOUND then user must supply low density bound here
   !   if .not.USER_CHOOSES_LOW_RHO_BOUND then this is never used
-  lrmin_for_user_chooses_low_rho_bound = 8d0
+  lrmin_for_user_chooses_low_rho_bound = 5d0
 
   USER_CHOOSES_LOW_TEMP_BOUND = .false. ! true if user is to override table's low bound in t
   ! Choose low temperature bound different than table's intrinsic bound in t.
@@ -166,7 +171,7 @@ program driver
   end if
 
   ! choose output resolution (nt and/or ny overwritten for some eostypes)
-  nr = 2000 ! use higher resolution for cold tables
+  nr = 345 ! use higher resolution for cold tables
   !nr = 250
   nt = 120
   ny = 100
@@ -498,6 +503,12 @@ program driver
         call nuc_eos_full(xrho,xtemp,xye,xenr,xprs,xent,xcs2,xdedt,&
           xdpderho,xdpdrhoe,xxa,xxh,xxn,xxp,xabar,xzbar,xmu_e,xmu_n,xmu_p,&
           xmuhat,keytemp,keyerr)
+
+        ! sometimes xcs2 is Infinity (at very low densities and low temps),
+        !   where it should be vanishing)
+        if(xcs2.gt.googol) then
+           xcs2=0.d0
+        end if
 
 	! find the microphysical potential theta
         if(eostype.eq.MICRO) then
