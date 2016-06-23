@@ -9,10 +9,19 @@ below for compiling and using the driver.
 
 ### Configuring
 System requirements are a Fortran90 compiler and the HDF5 libraries
-with Fortran90 module files and bindings. The latter can be gotten on
-a Mac OS with `brew install hdf5 --with-fortran`. (Note: you
-cannot compile hdf5 with fortran bindings AND make the hdf5
-libraries threadsafe with `--with-threadsafe` simultaneously.)
+with Fortran90 module files and bindings. As far as I can tell, the latter can
+*not* be got in OSX with homebrew (e.g. `brew install hdf5 --with-fortran`); you
+must install the HDF5 libraries by hand, using the same fortran compiler you are
+using here.
+
+You can download the [HDF5 source code](www.hdfgroup.org/downloads), and build
+it in `/usr/local` using, for example gfortran, with:
+
+```
+./configure --prefix=/usr/local/hdf5-gfortran --enable-fortran FC=gfortran
+make
+make install
+```
 
 Make symbolic links to the appropriate Makefile and make.inc in
 MakefileRules/. e.g.:
@@ -20,7 +29,7 @@ MakefileRules/. e.g.:
 ```
 cd SpECEOSdriver
 ln -s MakefileRules/Makefile-generic Makefile
-ln -s MakefileRules/make.inc-MacOS_10_8 make.inc
+ln -s MakefileRules/make.inc-OSX_gfortran make.inc
 ```
 
 ### Compiling
