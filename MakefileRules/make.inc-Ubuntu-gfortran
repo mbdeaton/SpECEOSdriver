@@ -9,8 +9,8 @@ export F90=gfortran
 export F90FLAGS=-O -Wuninitialized
 
 export LDFLAGS=$(F90FLAGS) 
-export HDF5DIR=/usr
-export HDF5LIBS=-L$(HDF5DIR)/lib -lhdf5_fortran -lhdf5 #-lz
+export HDF5DIR=/usr/local
+export HDF5LIBS=-L$(HDF5DIR)/lib -lhdf5_fortran -lhdf5 -lz
 export HDF5INCS=-I$(HDF5DIR)/include
 export LAPACKLIBS=-llapack #-lg2c
 export LIBS+=$(LAPACKLIBS)
