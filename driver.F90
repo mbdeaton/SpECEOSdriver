@@ -49,7 +49,7 @@ program driver
   real*8 hmin,cs
   real*8 rho_at_hmin,temp_at_hmin,ye_at_hmin,beta_ye_at_this_t
   integer FULL,BETA,COLD,WARM,BETAYE,COLDYE,WARMYE,MICRO,MUX,DERIVS,COLDMU,WARMT,WARMP,eostype
-  integer HSHEN_2011,LS_220,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
+  integer HSHEN_2011,LS_220,LS_180,GSHEN_NL3,GSHEN_FSU21,HEMPEL_SFHO,HEMPEL_SFHX,HEMPEL_DD2,eos
   logical USER_CHOOSES_BOUNDS
   logical USER_CHOOSES_LOW_RHO_BOUND
   logical USER_CHOOSES_LOW_TEMP_BOUND
@@ -107,15 +107,16 @@ program driver
   ! Define versions of tables:
   HSHEN_2011 = 1   ! HShenEOS_rho220_temp180_ye65_version_1.1_20120817.h5
   LS_220 = 2       ! LS220_234r_136t_50y_analmu_20091212_SVNr26.h5
-  GSHEN_NL3 = 3    ! GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5
-  GSHEN_FSU21 = 4  ! GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5
-  HEMPEL_SFHO = 5  ! Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5
-  HEMPEL_SFHX = 6  ! Hempel_SFHxEOS_rho234_temp180_ye60_version_1.1_20120817.h5
-  HEMPEL_DD2 = 7   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
+  LS_180 = 3       ! LS180_234r_136t_50y_analmu_20091212_SVNr26.h5
+  GSHEN_NL3 = 4    ! GShen_NL3EOS_rho280_temp180_ye52_version_1.1_20120817.h5
+  GSHEN_FSU21 = 5  ! GShenFSU_2.1EOS_rho280_temp180_ye52_version_1.1_20120824.h5
+  HEMPEL_SFHO = 6  ! Hempel_SFHoEOS_rho222_temp180_ye60_version_1.1_20120817.h5
+  HEMPEL_SFHX = 7  ! Hempel_SFHxEOS_rho234_temp180_ye60_version_1.1_20120817.h5
+  HEMPEL_DD2 = 8   ! Hempel_DD2EOS_rho234_temp180_ye60_version_1.1_20120817.h5
 
   ! ***** User-Chosen Parameters ************************************************************
-  eostype = FULL
-  eos = LS_220
+  eostype = MUX
+  eos = LS_180
 
   ! Choose the ratio of thermal pressure to total pressure to hold constant for WARM style tables.
   ! NOTE: if (eostype.ne.WARM).and.(eostype.ne.WARMYE).and.(eostype.ne.WARMT) then this parameter
@@ -191,6 +192,17 @@ program driver
     end if
   else if (eos.eq.LS_220) then
     call readtable("LS220_234r_136t_50y_analmu_20091212_SVNr26.h5")
+    tableymin = 0.035d0
+    if (.not.USER_CHOOSES_BOUNDS) then
+      lrmin = 3d0
+      lrmax = 16d0
+      ltmin = -2.0d0
+      ltmax = 2.4d0
+      ymin = tableymin
+      ymax = 0.53d0
+    end if
+  else if (eos.eq.LS_180) then
+    call readtable("LS180_234r_136t_50y_analmu_20091212_SVNr26.h5")
     tableymin = 0.035d0
     if (.not.USER_CHOOSES_BOUNDS) then
       lrmin = 3d0
